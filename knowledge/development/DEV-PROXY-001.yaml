@@ -1,0 +1,38 @@
+id: DEV-PROXY-001
+type: development_standard
+title: WebSocket & Streaming HTTP Proxying Standards with Hop-by-Hop Filtering
+domain: development
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: security_and_routing
+
+applies_to:
+  - gateway/main.py
+  - /etc/nginx/sites-available/openhands
+
+rule:
+  "Reverse proxy implementations must rigorously strip hop-by-hop HTTP headers before forwarding, stream request and response bodies asynchronously without in-memory buffering, and maintain concurrent bi-directional WebSocket loops."
+
+do:
+  - "Filter out standard hop-by-hop headers (`connection`, `keep-alive`, `proxy-authenticate`, `proxy-authorization`, `te`, `trailers`, `transfer-encoding`, `upgrade`, `host`, `content-length`) from both upstream requests and downstream responses."
+  - "Inject RFC-standard forwarded headers (`x-forwarded-for`, `x-forwarded-proto`, `x-forwarded-host`) to inform the backend of the original client context."
+  - "Stream upstream responses directly using chunked asynchronous iterators (`response.aiter_bytes()`) wrapped in FastAPI's `StreamingResponse`."
+  - "Implement concurrent WebSocket bidirectional proxying using `asyncio.wait([task1, task2], return_when=asyncio.FIRST_COMPLETED)` and cancel lingering tasks on disconnect."
+  - "Handle both text and binary frames cleanly on WebSocket tunnels without altering frame serialization."
+
+dont:
+  - "Do not read the full response body into memory (`await response.read()`) on proxy endpoints; this causes memory exhaustion and destroys real-time streaming."
+  - "Do not forward raw client `Host` headers to upstream services expecting `127.0.0.1:3000`."
+  - "Do not leave backend WebSocket connections open when the browser client disconnects."
+
+reason:
+  "OpenHands relies on real-time streaming (agent events, terminal stdin/stdout, and WebSocket progress). In-memory buffering breaks streaming responsiveness and introduces latency."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - DEV-OPS-001
+  - ADR-001

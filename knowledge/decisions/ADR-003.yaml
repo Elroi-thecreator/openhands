@@ -1,0 +1,29 @@
+id: ADR-003
+type: decision_record
+title: Oracle Cloud Ingress Rules on Port 8443 with Let's Encrypt SSL
+domain: decisions
+status: accepted
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: architecture_review
+
+context:
+  "The VM already hosts another production web service on standard HTTP (80) and HTTPS (443) for `pnrs.is-a.dev` and `elroi.js.org`. We needed to expose OpenHands externally with valid SSL encryption without disrupting existing root web routing or requiring a new top-level domain."
+
+decision:
+  "We deployed an SSL-enabled Nginx server block on port 8443 reusing the existing Let's Encrypt wildcard certificate for `pnrs.is-a.dev`, opened TCP port 8443 (and 8080) in the Oracle Cloud VCN Ingress Security List using the OCI API, and proxied traffic down to the local gateway on port 8080."
+
+consequences:
+  positive:
+    - "Zero interference with the existing web services running on ports 80/443."
+    - "Automatic TLS encryption: connections to `https://pnrs.is-a.dev:8443` are fully secured using Let's Encrypt certificates."
+    - "Automated cloud networking: programmatically updated OCI Security Lists without requiring manual console changes."
+  negative:
+    - "Users must append the port suffix `:8443` to the URL when navigating to the OpenHands interface in their browser."
+
+related_items:
+  - ARCH-NET-001
+  - ARCH-GATEWAY-001

@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PomoPulse - Modern Pomodoro Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pomodoro: '#ef4444',
+                            shortBreak: '#10b981',
+                            longBreak: '#3b82f6',
+                            darkBg: '#0f172a',
+                            darkCard: '#1e293b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased transition-colors duration-300 selection:bg-rose-500 selection:text-white flex flex-col justify-between">
+    
+    <!-- Top Header -->
+    <header class="max-w-4xl mx-auto w-full p-4 md:p-6 flex items-center justify-between border-b border-slate-800">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-500/20">
+                <i class="fa-solid fa-clock text-white text-xl"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">PomoPulse</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex items-center space-x-2">
+            <button id="btn-ambient" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200" title="Ambient Sounds">
+                <i class="fa-solid fa-headphones text-lg"></i>
+            </button>
+            <button id="btn-stats" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200" title="Statistics">
+                <i class="fa-solid fa-chart-bar text-lg"></i>
+            </button>
+            <button id="btn-settings" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200" title="Settings">
+                <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+            <button id="btn-theme" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200" title="Toggle Light/Dark Theme">
+                <i id="theme-icon" class="fa-solid fa-moon text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-2xl mx-auto w-full px-4 py-8 flex-1 flex flex-col items-center justify-center space-y-8">
+        
+        <!-- Timer Modes Selector -->
+        <div class="flex p-1.5 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/50 shadow-inner w-full max-w-md justify-between">
+            <button data-mode="pomodoro" class="mode-btn active flex-1 py-2.5 rounded-xl font-medium text-sm text-center transition-all duration-300 bg-rose-500 text-white shadow-lg shadow-rose-500/30">
+                <i class="fa-solid fa-fire mr-1.5"></i> Pomodoro
+            </button>
+            <button data-mode="shortBreak" class="mode-btn flex-1 py-2.5 rounded-xl font-medium text-sm text-center transition-all duration-300 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-mug-hot mr-1.5"></i> Short Break
+            </button>
+            <button data-mode="longBreak" class="mode-btn flex-1 py-2.5 rounded-xl font-medium text-sm text-center transition-all duration-300 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-couch mr-1.5"></i> Long Break
+            </button>
+        </div>
+
+        <!-- Active Task Banner -->
+        <div id="active-task-display" class="hidden text-center bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-2 text-sm text-slate-300 items-center space-x-2">
+            <span class="text-xs uppercase tracking-wider text-rose-400 font-semibold">Focusing on:</span>
+            <span id="active-task-title" class="font-medium text-white"></span>
+            <button id="btn-clear-active-task" class="text-slate-500 hover:text-rose-400 ml-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Timer Circle Display -->
+        <div class="relative flex items-center justify-center my-4 group">
+            <svg class="w-72 h-72 sm:w-80 sm:h-80 transform -rotate-90" viewBox="0 0 250 250">
+                <!-- Background Circle Track -->
+                <circle cx="125" cy="125" r="105" class="stroke-slate-800" stroke-width="12" fill="transparent" />
+                <!-- Animated Progress Ring -->
+                <circle id="timer-progress" cx="125" cy="125" r="105" 
+                        class="stroke-rose-500 transition-all duration-500 ease-linear" 
+                        stroke-width="12" 
+                        stroke-linecap="round" 
+                        fill="transparent" 
+                        stroke-dasharray="659.73" 
+                        stroke-dashoffset="0" />
+            </svg>
+
+            <!-- Center Content -->
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span id="timer-label" class="text-xs sm:text-sm uppercase tracking-widest font-semibold text-slate-400 mb-1">Time to Focus</span>
+                <span id="timer-display" class="text-5xl sm:text-6xl font-extrabold tracking-tight font-mono text-white select-none">25:00</span>
+                <span id="session-count-badge" class="mt-3 text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700/50">
+                    Session <span id="current-session-num" class="text-rose-400 font-bold">#1</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Timer Control Buttons -->
+        <div class="flex items-center space-x-4">
+            <button id="btn-reset" class="p-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200 active:scale-95 shadow-md" title="Reset Timer (R)">
+                <i class="fa-solid fa-rotate-right text-xl"></i>
+            </button>
+
+            <button id="btn-start" class="px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold text-lg tracking-wide shadow-lg shadow-rose-500/30 transition-all duration-200 transform hover:scale-105 active:scale-95 min-w-[150px]">
+                START
+            </button>
+
+            <button id="btn-skip" class="p-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200 active:scale-95 shadow-md" title="Skip Session (S)">
+                <i class="fa-solid fa-forward-step text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Keyboard shortcut hint -->
+        <div class="text-xs text-slate-500 flex items-center space-x-3">
+            <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-400">Space</kbd> Start/Pause</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-400">R</kbd> Reset</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-400">S</kbd> Skip</span>
+        </div>
+
+        <!-- Task Management Card -->
+        <div class="w-full max-w-md bg-slate-800/40 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check text-rose-500"></i>
+                    <span>Tasks</span>
+                </h3>
+                <span id="task-counter" class="text-xs text-slate-400 font-medium">0 / 0 completed</span>
+            </div>
+
+            <form id="task-form" class="flex space-x-2 mb-4">
+                <input type="text" id="task-input" placeholder="What are you working on?" required
+                       class="flex-1 bg-slate-900 border border-slate-700 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                <button type="submit" class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-all">
+                    Add
+                </button>
+            </form>
+
+            <ul id="task-list" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                <!-- Task items dynamically injected -->
+            </ul>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-4 text-center text-xs text-slate-500 border-t border-slate-800/60">
+        <p>PomoPulse Pomodoro Timer &bull; Stay Focused, Take Breaks</p>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50 transition-all">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders text-rose-500"></i>
+                    <span>Timer Settings</span>
+                </h2>
+                <button class="close-modal text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
+                <!-- Timer Durations -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-3">Time (Minutes)</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <span class="text-xs text-slate-400">Pomodoro</span>
+                            <input type="number" id="setting-pomodoro" min="1" max="120" value="25" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-center text-white font-semibold outline-none focus:border-rose-500">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400">Short Break</span>
+                            <input type="number" id="setting-short-break" min="1" max="60" value="5" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-center text-white font-semibold outline-none focus:border-rose-500">
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400">Long Break</span>
+                            <input type="number" id="setting-long-break" min="1" max="90" value="15" class="w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-center text-white font-semibold outline-none focus:border-rose-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Long Break Interval -->
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-medium text-white">Long Break Interval</div>
+                        <div class="text-xs text-slate-400">Number of pomodoros before long break</div>
+                    </div>
+                    <input type="number" id="setting-interval" min="1" max="12" value="4" class="w-16 bg-slate-800 border border-slate-700 rounded-xl px-2 py-1 text-center text-white font-semibold outline-none focus:border-rose-500">
+                </div>
+
+                <!-- Auto Start Toggles -->
+                <div class="space-y-3 border-t border-slate-800 pt-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-white">Auto-start Breaks</span>
+                        <input type="checkbox" id="setting-autostart-breaks" class="w-5 h-5 accent-rose-500 cursor-pointer">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-white">Auto-start Pomodoros</span>
+                        <input type="checkbox" id="setting-autostart-pomodoro" class="w-5 h-5 accent-rose-500 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Sound Alerts -->
+                <div class="border-t border-slate-800 pt-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-medium text-white">Alarm Sound</span>
+                            <div class="text-xs text-slate-400">Synthesized audioalert</div>
+                        </div>
+                        <select id="setting-sound-type" class="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2 outline-none focus:border-rose-500">
+                            <option value="bell">Digital Bell</option>
+                            <option value="beep">Digital Beep</option>
+                            <option value="marimba">Gentle Chime</option>
+                            <option value="fanfare">Victory Chime</option>
+                            <option value="none">Silent</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-volume-high text-slate-400"></i>
+                        <input type="range" id="setting-volume" min="0" max="100" value="80" class="w-full accent-rose-500">
+                        <button id="btn-test-sound" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs">Test</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button id="btn-save-settings" class="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-rose-500/20">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Sound Modal/Panel -->
+    <div id="modal-ambient" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-headphones text-rose-500"></i>
+                    <span>Ambient Sound Generator</span>
+                </h2>
+                <button class="close-modal text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Rain Sound -->
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-cloud-rain text-blue-400 text-xl w-6"></i>
+                        <div>
+                            <div class="text-sm font-semibold text-white">Rain Noise</div>
+                            <div class="text-xs text-slate-400">Relaxing rainfall sound</div>
+                        </div>
+                    </div>
+                    <button id="toggle-ambient-rain" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition-all">
+                        Play
+                    </button>
+                </div>
+
+                <!-- White Noise -->
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-wind text-slate-300 text-xl w-6"></i>
+                        <div>
+                            <div class="text-sm font-semibold text-white">White / Pink Noise</div>
+                            <div class="text-xs text-slate-400">Steady focus static</div>
+                        </div>
+                    </div>
+                    <button id="toggle-ambient-noise" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition-all">
+                        Play
+                    </button>
+                </div>
+
+                <!-- Ocean Waves -->
+                <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-water text-teal-400 text-xl w-6"></i>
+                        <div>
+                            <div class="text-sm font-semibold text-white">Ocean Waves</div>
+                            <div class="text-xs text-slate-400">Rhythmic wave swells</div>
+                        </div>
+                    </div>
+                    <button id="toggle-ambient-ocean" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition-all">
+                        Play
+                    </button>
+                </div>
+
+                <!-- Ambient Volume -->
+                <div class="pt-2">
+                    <label class="block text-xs font-medium text-slate-400 mb-2">Ambient Volume</label>
+                    <input type="range" id="ambient-volume" min="0" max="100" value="40" class="w-full accent-rose-500">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div id="modal-stats" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-line text-rose-500"></i>
+                    <span>Activity Statistics</span>
+                </h2>
+                <button class="close-modal text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="p-4 bg-slate-800/60 border border-slate-700/50 rounded-xl text-center">
+                    <div id="stat-total-sessions" class="text-3xl font-extrabold text-white">0</div>
+                    <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Completed Pomo</div>
+                </div>
+                <div class="p-4 bg-slate-800/60 border border-slate-700/50 rounded-xl text-center">
+                    <div id="stat-total-minutes" class="text-3xl font-extrabold text-rose-400">0</div>
+                    <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Focus Minutes</div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Recent Activity Log</h4>
+                <div id="stats-log-list" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-sm text-slate-300">
+                    <div class="text-slate-500 text-center py-4 text-xs">No completed sessions yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

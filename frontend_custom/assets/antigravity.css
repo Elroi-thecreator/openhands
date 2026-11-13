@@ -1,0 +1,489 @@
+/* Google Antigravity Cosmic Dark Theme for OpenHands */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --ag-bg-base: #080c16;
+  --ag-bg-surface: #0e1424;
+  --ag-bg-card: rgba(16, 22, 38, 0.85);
+  --ag-border: rgba(99, 102, 241, 0.25);
+  --ag-border-subtle: rgba(255, 255, 255, 0.08);
+  --ag-primary: #8b5cf6;
+  --ag-primary-hover: #7c3aed;
+  --ag-cyan: #06b6d4;
+  --ag-text: #f8fafc;
+  --ag-text-muted: #94a3b8;
+  --ag-user-bubble: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%);
+  --bg-dark: #080c16 !important;
+  --bg-workspace: #080c16 !important;
+  --base: #080c16 !important;
+  --border: #1e263d !important;
+  --color-base: #080c16 !important;
+  --color-base-secondary: #0e1424 !important;
+}
+
+/* Global Reset & Cosmic Ambient Background */
+html, body, #root, [data-testid="root-layout"], #root-outlet {
+  background-color: var(--ag-bg-base) !important;
+  background-image: 
+    radial-gradient(at 15% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 55%),
+    radial-gradient(at 85% 90%, rgba(168, 85, 247, 0.09) 0px, transparent 55%),
+    radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.03) 0px, transparent 65%) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  color: var(--ag-text) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure no white strips at the top or edges */
+div[class*="h-screen"],
+div[class*="min-w-"],
+#root-outlet {
+  background-color: transparent !important;
+}
+
+/* Antigravity Glassmorphic Sidebar */
+aside, nav, [data-testid="sidebar"] {
+  background: rgba(10, 14, 26, 0.96) !important;
+  backdrop-filter: blur(20px) !important;
+  border-right: 1px solid var(--ag-border-subtle) !important;
+}
+
+/* Antigravity Sidebar + New Conversation Button */
+[data-testid="sidebar-conversations-link"],
+a[href="/conversations"] {
+  background: rgba(99, 102, 241, 0.12) !important;
+  border: 1px solid rgba(139, 92, 246, 0.35) !important;
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  margin: 10px 8px 14px 8px !important;
+  color: #f8fafc !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+}
+[data-testid="sidebar-conversations-link"]:hover,
+a[href="/conversations"]:hover {
+  background: rgba(139, 92, 246, 0.22) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Sidebar Section Headers */
+aside h2,
+aside h3,
+.sidebar-section-title {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #64748b !important;
+  margin-top: 14px !important;
+  margin-bottom: 6px !important;
+  padding-left: 10px !important;
+}
+
+/* Sidebar Conversation List & Active Selection */
+aside a[class*="rounded"],
+aside button[class*="rounded"] {
+  transition: all 0.15s ease !important;
+}
+aside a[class*="rounded"]:hover,
+aside button[class*="rounded"]:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #f8fafc !important;
+}
+aside a[aria-current="page"],
+aside a[class*="bg-"][class*="active"] {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-left: 3px solid #8b5cf6 !important;
+  color: #f8fafc !important;
+  font-weight: 500 !important;
+}
+
+/* Antigravity Sidebar Status Indicator */
+.ag-sidebar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 10px 8px 8px 8px;
+  border-radius: 8px;
+  background: rgba(16, 22, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: #94a3b8;
+}
+.ag-sidebar-status .ag-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Antigravity Glassmorphic Top Navbar / Header */
+header, 
+[data-testid="navbar"], 
+[data-testid="conversation-header"],
+div:has(> h1[data-testid="conversation-title"]),
+div:has(> [data-testid="conversation-title"]) {
+  background: rgba(8, 12, 22, 0.94) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid var(--ag-border-subtle) !important;
+  color: #f8fafc !important;
+}
+
+/* Header Conversation Title / Breadcrumb */
+[data-testid="conversation-title"],
+h1 {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
+}
+
+.ag-breadcrumb-repo {
+  color: #94a3b8;
+  font-weight: 500;
+  font-size: 14px;
+}
+.ag-breadcrumb-sep {
+  color: #475569;
+  margin: 0 8px;
+  font-size: 13px;
+}
+.ag-breadcrumb-title {
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Branding Text Gradient */
+.ag-brand-gradient {
+  background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 50%, #38bdf8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Antigravity Welcome Landing Screen & Suggestions */
+[data-testid="chat-suggestions"] {
+  background: transparent !important;
+}
+
+[data-testid="chat-suggestions"] span.text-\[32px\],
+[data-testid="chat-suggestions"] h1,
+[data-testid="chat-suggestions"] .text-white {
+  background: linear-gradient(135deg, #f8fafc 0%, #c7d2fe 60%, #818cf8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-weight: 700 !important;
+  font-size: 32px !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 8px !important;
+}
+
+/* Suggestion Action Cards */
+[data-testid="suggestions"] button,
+button:has(> [data-testid="suggestion"]),
+button.border-\[\#525252\].rounded-\[15px\] {
+  background: rgba(16, 22, 38, 0.85) !important;
+  border: 1px solid rgba(99, 102, 241, 0.28) !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-testid="suggestions"] button:hover,
+button:has(> [data-testid="suggestion"]):hover,
+button.border-\[\#525252\].rounded-\[15px\]:hover {
+  background: rgba(99, 102, 241, 0.16) !important;
+  border-color: #8b5cf6 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.25) !important;
+}
+
+[data-testid="suggestion"],
+[data-testid="suggestions"] span,
+span.text-\[\#DEDFE0\] {
+  color: #e2e8f0 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+/* Center Graphic Glow */
+[data-testid="chat-suggestions"] svg {
+  filter: drop-shadow(0 0 16px rgba(139, 92, 246, 0.35)) !important;
+}
+
+/* Antigravity User Chat Bubble */
+div[class*="items-end"] > div[class*="rounded"],
+.chat-message-user {
+  background: var(--ag-user-bubble) !important;
+  border: 1px solid rgba(139, 92, 246, 0.45) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.18) !important;
+  color: #f8fafc !important;
+  border-radius: 16px !important;
+  padding: 10px 16px !important;
+  font-weight: 400 !important;
+}
+
+/* Antigravity Thought & Microagent Accordion Blocks */
+details summary,
+[data-testid="thought-block"],
+div[class*="step-disclosure"],
+button[data-testid*="step-disclosure"],
+div:has(> [data-testid="step-disclosure"]),
+.ag-microagent-card {
+  background: rgba(139, 92, 246, 0.08) !important;
+  border-left: 3px solid #8b5cf6 !important;
+  border-radius: 6px 12px 12px 6px !important;
+  padding: 8px 14px !important;
+  color: #c7d2fe !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  margin: 8px 0 !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+  border-top: 1px solid rgba(139, 92, 246, 0.15) !important;
+  border-right: 1px solid rgba(139, 92, 246, 0.15) !important;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15) !important;
+  transition: all 0.2s ease !important;
+}
+details[open] summary,
+[data-testid="thought-block"]:hover,
+.ag-microagent-card:hover {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-left-color: #a855f7 !important;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* Tool Execution & Step Cards */
+div[class*="bg-[#25272D]"],
+div[class*="bg-[#1f2228]"],
+div[class*="border-[#525252]"] {
+  background: var(--ag-bg-card) !important;
+  border: 1px solid var(--ag-border-subtle) !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(12px) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+div[class*="bg-[#25272D]"]:hover {
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.12) !important;
+}
+
+/* Floating Antigravity Prompt Input Card */
+div[data-testid="interactive-chat-box"] > div.relative,
+div.bg-\[\#25272D\].rounded-\[15px\],
+div:has(> textarea.chat-input) {
+  background: rgba(13, 18, 32, 0.96) !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.65), 0 0 24px rgba(99, 102, 241, 0.15) !important;
+  backdrop-filter: blur(20px) !important;
+  padding: 12px 18px !important;
+  transition: all 0.25s ease !important;
+}
+
+div[data-testid="interactive-chat-box"] > div.relative:focus-within,
+div.bg-\[\#25272D\].rounded-\[15px\]:focus-within,
+div:has(> textarea.chat-input):focus-within {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.75), 0 0 32px rgba(139, 92, 246, 0.35) !important;
+}
+
+textarea.chat-input,
+.chat-input {
+  color: #f8fafc !important;
+  background: transparent !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+}
+
+textarea.chat-input::placeholder,
+.chat-input::placeholder {
+  color: #64748b !important;
+}
+
+/* Circular Gradient Send Button */
+button[data-testid="send-message-button"],
+button:has(> svg[viewBox="0 0 12 17"]) {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border-radius: 50% !important;
+  width: 34px !important;
+  height: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45) !important;
+  border: none !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+button[data-testid="send-message-button"]:hover {
+  transform: scale(1.06) !important;
+  box-shadow: 0 6px 22px rgba(139, 92, 246, 0.6) !important;
+}
+button[data-testid="send-message-button"] svg path,
+button:has(> svg[viewBox="0 0 12 17"]) svg path {
+  fill: #ffffff !important;
+}
+
+/* Antigravity Model Badge in Toolbar */
+.ag-model-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #a5b4fc;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ag-model-badge:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #8b5cf6;
+}
+
+/* Git Control Bar (Bottom Workspace Bar) */
+[data-testid="chat-git-control-bar"] button,
+div:has(> [data-testid="git-control-bar-repo-button"]) button {
+  background: rgba(16, 22, 38, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  color: #cbd5e1 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+[data-testid="chat-git-control-bar"] button:hover {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+/* Files Changed Summary Badge */
+.ag-files-changed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 22, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #e2e8f0;
+  margin: 8px 0;
+}
+.ag-files-changed-badge .ag-added { color: #10b981; font-weight: 600; }
+.ag-files-changed-badge .ag-removed { color: #ef4444; font-weight: 600; }
+.ag-files-changed-badge .ag-review-btn {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* Refined Dark Red Error Banner */
+div[class*="bg-red-500"],
+div[class*="border-red-800"],
+div[class*="text-black"][class*="bg-red-500"] {
+  background: rgba(185, 28, 28, 0.22) !important;
+  border: 1px solid rgba(239, 68, 68, 0.65) !important;
+  color: #fca5a5 !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15) !important;
+  font-weight: 500 !important;
+  padding: 10px 14px !important;
+}
+
+/* Markdown Typography */
+.markdown-body {
+  color: #e2e8f0 !important;
+  line-height: 1.65 !important;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 6px !important;
+  margin-top: 18px !important;
+  margin-bottom: 10px !important;
+}
+.markdown-body a {
+  color: #818cf8 !important;
+  text-decoration: underline !important;
+}
+.markdown-body code {
+  background: rgba(15, 23, 42, 0.8) !important;
+  color: #c7d2fe !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-size: 13px !important;
+}
+.markdown-body pre {
+  background: #0b0f19 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+}
+.markdown-body pre code {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Antigravity Tables */
+table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  border: 1px solid var(--ag-border-subtle) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  margin: 14px 0 !important;
+  background: rgba(15, 22, 38, 0.6) !important;
+}
+th {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+  color: #f1f5f9 !important;
+  border-bottom: 1px solid var(--ag-border-subtle) !important;
+  padding: 8px 14px !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+}
+td {
+  border-bottom: 1px solid var(--ag-border-subtle) !important;
+  padding: 8px 14px !important;
+  color: #cbd5e1 !important;
+}
+
+/* Sleek Antigravity Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+}
+::-webkit-scrollbar-thumb {
+  background: #232d42;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3c4b6e;
+}

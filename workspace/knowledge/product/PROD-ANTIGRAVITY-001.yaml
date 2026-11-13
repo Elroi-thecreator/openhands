@@ -1,0 +1,51 @@
+id: PROD-ANTIGRAVITY-001
+type: product_standard
+title: Antigravity Autonomous Agent Transformation, UI Styling & Microagent Protocol Standard
+domain: product
+status: approved
+version: 1.2.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - workspace/AGENTS.md
+  - workspace/.openhands/microagents/
+  - workspace/knowledge/
+  - workspace/artifacts/
+  - frontend_custom/
+  - openhands-repo/
+  - gateway/main.py
+  - docker-compose.yml
+  - state/settings.json
+  - .env
+
+rule:
+  "OpenHands operates with full Antigravity parity across UI aesthetics (expanded Antigravity sidebar with prominent New Conversation button and environment status pill, top header breadcrumbs, cohesive cosmic dark obsidian glassmorphism, glowing violet thought accordions, floating prompt composer, and live telemetry HUD without mock session data), sub-2-second sandbox initialization, task microagent slash commands, and local zero-cost LLM fallback."
+
+do:
+  - "Maintain `workspace/AGENTS.md` as the master repository microagent loaded automatically on every agent turn."
+  - "Deploy task slash commands in `workspace/.openhands/microagents/`: `/plan` (blueprints), `/verify` (test suites), and `/review` (audits)."
+  - "Eliminate session start delays by enabling `SANDBOX_KEEP_RUNTIME_ALIVE=true`, `SANDBOX_PAUSE_CLOSED_RUNTIMES=true`, and `SANDBOX_CLOSE_DELAY=3600` in Docker Compose."
+  - "Mount `frontend_custom:/app/frontend/build:ro` in Docker Compose to persistently serve Antigravity styling, SVG logo, and 900+ translation replacements while keeping all OpenHands native dynamic navigation, file tree, terminal, and browser preview intact."
+  - "Maintain pristine separation between the base vendor bundle (`root-DV94nIGd.css`) and custom theme layers (`antigravity.css`)."
+  - "Track upstream OpenHands source in `openhands-repo` under branch `antigravity-workspace` with committed theme assets ready for the user's GitHub fork."
+  - "Configure local `ollama/qwen2.5-coder:1.5b` (sub-second response, 0 cost) alongside Google Gemini to prevent API rate limit and quota exhaustion stalls."
+  - "Provide clean Antigravity breadcrumb navigation (`<repo> / <conversation>`) and electric violet thought accordions for microagent observations."
+  - "Enforce local-first execution and loop avoidance: prohibit automated GitHub PR attempts unless explicitly requested."
+
+dont:
+  - "Do not permit the agent to crash with `AgentStuckInLoopError` on repeated tool calls."
+  - "Do not hardcode fake mock project lists in the DOM; retain real dynamic repository and conversation trees."
+  - "Do not allow sandbox containers to re-download `uvx` dependencies from scratch on every session."
+  - "Do not run heavy 7B+ local LLMs on 2-vCPU CPU-only VMs; use Qwen 2.5 Coder 1.5B locally or offload to Google Colab T4 GPU."
+
+reason:
+  "Autonomous agent frameworks often suffer from stubborn retry loops, lack of self-verification, and sluggish CPU inference. Implementing the Antigravity protocol via OpenHands' native microagent architecture and pairing it with high-speed local inference and signature Antigravity aesthetics delivers production-grade reliability and responsiveness."
+
+related_items:
+  - PROD-LLM-001
+  - DEV-BUDGET-001
+  - ARCH-GATEWAY-001

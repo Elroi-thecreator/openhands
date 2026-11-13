@@ -1,0 +1,32 @@
+services:
+  openhands:
+    image: ghcr.io/all-hands-ai/openhands:latest
+    container_name: openhands-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - SANDBOX_USER_ID=1001
+      - SANDBOX_VOLUMES=/home/ubuntu/openhand/workspace:/workspace:rw
+      - SANDBOX_RUNTIME_CONTAINER_IMAGE=ghcr.io/all-hands-ai/runtime:latest-nikolaik
+      - SANDBOX_KEEP_RUNTIME_ALIVE=true
+      - SANDBOX_PAUSE_CLOSED_RUNTIMES=true
+      - SANDBOX_CLOSE_DELAY=3600
+      - LOG_ALL_EVENTS=true
+      - PORT=3000
+    ports:
+      # Bound strictly to 127.0.0.1 so it cannot be accessed directly without going through authentication gateway
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/ubuntu/openhand/state:/.openhands
+      - /home/ubuntu/openhand/workspace:/workspace
+      - /home/ubuntu/openhand/frontend_custom:/app/frontend/build:ro
+      - /home/ubuntu/openhand/patches/bash.py:/app/openhands/agenthub/codeact_agent/tools/bash.py:ro
+      - /home/ubuntu/openhand/patches/str_replace_editor.py:/app/openhands/agenthub/codeact_agent/tools/str_replace_editor.py:ro
+      - /home/ubuntu/openhand/patches/ipython.py:/app/openhands/agenthub/codeact_agent/tools/ipython.py:ro
+      - /home/ubuntu/openhand/patches/browser.py:/app/openhands/agenthub/codeact_agent/tools/browser.py:ro
+      - /home/ubuntu/openhand/patches/llm_based_edit.py:/app/openhands/agenthub/codeact_agent/tools/llm_based_edit.py:ro
+      - /home/ubuntu/openhand/patches/fn_call_converter.py:/app/openhands/llm/fn_call_converter.py:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

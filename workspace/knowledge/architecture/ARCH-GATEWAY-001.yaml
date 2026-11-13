@@ -1,0 +1,47 @@
+id: ARCH-GATEWAY-001
+type: architecture_standard
+title: FastAPI Authentication Reverse Proxy, WebSocket Tunnel & Antigravity Live Status HUD Architecture
+domain: architecture
+status: approved
+version: 1.1.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: security_and_routing
+
+applies_to:
+  - gateway/main.py
+  - gateway/templates/login.html
+  - gateway/templates/status.html
+  - gateway/.env
+  - scripts/watch_agent.py
+
+rule:
+  "All HTTP requests and WebSocket streams directed to OpenHands must terminate at the Custom Web Gateway, which enforces session cookie authentication before proxying traffic upstream to 127.0.0.1:3000, while providing real-time Antigravity-style agent status HUD overlays and live telemetry dashboards."
+
+do:
+  - "Implement the gateway using FastAPI and Uvicorn with async I/O to handle long-lived connections and streaming."
+  - "Serve a modern, responsive HTML5/CSS3 login interface at `/gateway/login` (and `/login`) with credential validation against configured gateway secrets."
+  - "Serve a real-time Antigravity status telemetry dashboard at `/gateway/status` (and `/status`) with live agent state, current action preview, Ollama CPU%, and VM memory metrics."
+  - "Expose `/gateway/api/live` returning sub-50ms JSON telemetry of the active session, running sandboxes, and host CPU/RAM."
+  - "Provide a single-click LLM unstick endpoint (`/gateway/api/restart-ollama`) to safely recover from runaway prefill loops."
+  - "Inject a non-intrusive floating Antigravity Live Status Pill into OpenHands workspace HTML pages, giving users immediate visibility into background agent thoughts and LLM compute load."
+  - "Issue cryptographically signed session cookies (`openhands_auth`) using HMAC-SHA256 with timestamp validation and 7-day TTL (`max_age=604800`, `HttpOnly`, `SameSite=Lax`)."
+  - "Maintain a dedicated WebSocket endpoint (`/{full_path:path}`) that verifies cookie/token authorization and establishes a bi-directional proxy tunnel to `ws://127.0.0.1:3000` using `websockets.connect`."
+  - "Stream HTTP responses asynchronously using `httpx.AsyncClient` without full memory buffering to support large payloads and server-sent events."
+  - "Intercept connection errors gracefully and render an auto-refreshing 503 startup page if the backend container is restarting."
+
+dont:
+  - "Do not forward hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`, `Host`, `Content-Length`) to upstream services."
+  - "Do not permit unauthenticated WebSocket connections to reach the OpenHands backend."
+  - "Do not store plaintext session tokens in memory or disk without HMAC signature verification."
+
+reason:
+  "OpenHands does not natively provide password protection or granular real-time execution telemetry in its local UI. The FastAPI gateway provides authentication, real-time WebSocket multiplexing, and Antigravity-style live status introspection without modifying upstream container code."
+
+related_items:
+  - ARCH-DEPLOY-001
+  - DEV-PROXY-001
+  - PROD-AUTH-001
+  - ADR-001

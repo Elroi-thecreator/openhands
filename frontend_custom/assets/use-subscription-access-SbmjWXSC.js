@@ -1,0 +1,1 @@
+import{u as o,b as r,a}from"./use-config-BtaDlBUv.js";import{B as c}from"./billing-service.api-BShaYf24.js";const u=()=>{const{data:s}=o(),e=r();return a({queryKey:["user","subscription_access"],queryFn:c.getSubscriptionAccess,enabled:!e&&s?.APP_MODE==="saas"&&s?.FEATURE_FLAGS?.ENABLE_BILLING})};export{u};

@@ -1,0 +1,40 @@
+id: ARCH-DEPLOY-001
+type: architecture_standard
+title: Isolated Docker Container Sandbox & Daemon Architecture
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: core_infrastructure
+
+applies_to:
+  - docker-compose.yml
+  - workspace/
+  - state/
+
+rule:
+  "The OpenHands application must execute inside a containerized Docker environment with host Docker socket passthrough for dynamic execution sandboxes, persistent configuration storage in state/, and a dedicated workspace volume mounted for agent file manipulation."
+
+do:
+  - "Run OpenHands using the official container image `ghcr.io/all-hands-ai/openhands:latest` managed via Docker Compose."
+  - "Mount the host Docker socket (`/var/run/docker.sock`) into the container to enable sibling container spawning for code sandboxes."
+  - "Mount `/home/ubuntu/openhand/state:/.openhands` for persistent runtime configuration, JWT secrets, and session histories."
+  - "Mount `/home/ubuntu/openhand/workspace:/workspace` as the isolated workspace directory accessible to agent operations."
+  - "Configure `SANDBOX_USER_ID=1001` to match the host `ubuntu` non-root user UID to prevent permission mismatches on disk."
+  - "Pre-pull and specify `SANDBOX_RUNTIME_CONTAINER_IMAGE=ghcr.io/all-hands-ai/runtime:latest-nikolaik` to ensure predictable sandbox startup."
+
+dont:
+  - "Do not mount root host directories into the container or sandbox."
+  - "Do not expose OpenHands directly to public network interfaces (`0.0.0.0:3000`); always bind to `127.0.0.1:3000`."
+  - "Do not use deprecated environment variables like `WORKSPACE_BASE` or `WORKSPACE_MOUNT_PATH` (use `SANDBOX_VOLUMES` and volume mappings)."
+
+reason:
+  "OpenHands generates and executes arbitrary shell code. Isolate all execution workloads within disposable sibling Docker containers while retaining user state and workspace outputs persistently on the host filesystem."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - ARCH-NET-001
+  - ADR-002

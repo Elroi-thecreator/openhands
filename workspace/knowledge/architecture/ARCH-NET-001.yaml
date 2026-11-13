@@ -1,0 +1,39 @@
+id: ARCH-NET-001
+type: architecture_standard
+title: Oracle Cloud (OCI) Ingress Security, Iptables & SSL Nginx Proxy Architecture
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: cloud_networking
+
+applies_to:
+  - /etc/nginx/sites-available/openhands
+  - /etc/iptables/rules.v4
+  - OCI Security List
+
+rule:
+  "External ingress to OpenHands must be routed through Nginx with Let's Encrypt SSL on port 8443, protected at the network boundary by Oracle Cloud VCN Security Lists and host iptables."
+
+do:
+  - "Maintain Nginx reverse proxy listening on port 8443 with SSL certificates from `/etc/letsencrypt/live/pnrs.is-a.dev/`."
+  - "Configure Nginx with `proxy_http_version 1.1`, `Upgrade` and `Connection 'upgrade'` headers, and `proxy_read_timeout 86400s` to prevent premature WebSocket disconnections."
+  - "Maintain matching TCP ACCEPT rules in the host iptables filter table for ports 8443 and 8080 and persist them via `netfilter-persistent`."
+  - "Synchronize OCI Virtual Cloud Network (VCN) Ingress Security Lists using the OCI API to permit CIDR `0.0.0.0/0` ingress on TCP destination ports 8443 and 8080."
+  - "Forward client identification headers (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `Host`) to the gateway."
+
+dont:
+  - "Do not open unauthenticated internal ports (e.g., 3000) directly in OCI Security Lists or iptables."
+  - "Do not bypass Nginx SSL termination when serving public traffic over the internet."
+  - "Do not rely exclusively on host iptables without verifying OCI cloud hypervisor ingress rules."
+
+reason:
+  "Oracle Cloud drops non-whitelisted ingress traffic before it reaches the VM. A multi-layer networking approach (OCI VCN &rarr; Host iptables &rarr; Nginx SSL &rarr; Gateway Auth &rarr; Docker) ensures transport security and defense-in-depth."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - DEV-OPS-001
+  - ADR-003

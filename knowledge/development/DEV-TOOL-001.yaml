@@ -1,0 +1,42 @@
+id: DEV-TOOL-001
+type: development_standard
+title: OpenHands Tool Schema Definition, Security Risk Decoupling & Function Call Converter Standard
+domain: development
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - patches/bash.py
+  - patches/str_replace_editor.py
+  - patches/ipython.py
+  - patches/browser.py
+  - patches/llm_based_edit.py
+  - patches/fn_call_converter.py
+  - docker-compose.yml
+
+rule:
+  "All OpenHands tool definitions in `agenthub/codeact_agent/tools/` must specify only functional invocation arguments in their `required` parameters list, strictly excluding auxiliary metadata fields like `security_risk`. The `fn_call_converter.py` parser must tolerate the absence of non-functional metadata fields during XML and JSON tool call validation."
+
+do:
+  - "Define `security_risk` as an optional parameter in tool schemas with default values or omit it from the `required` array in `bash.py`, `str_replace_editor.py`, `ipython.py`, `browser.py`, and `llm_based_edit.py`."
+  - "In `fn_call_converter.py`, compute missing required parameters as `(required_params - {'security_risk'}) - found_params` so XML and native function calling converters never fail validation on missing security metadata."
+  - "Maintain hotfixed files in `/home/ubuntu/openhand/patches/` and bind mount them in `docker-compose.yml` into container locations `/openhands/openhands/agenthub/codeact_agent/tools/` and `/openhands/openhands/llm/`."
+  - "Verify all tool calling flows via end-to-end automated tests (`scripts/e2e_live_test.py`) with real sandbox container execution."
+
+dont:
+  - "Do not place `security_risk` in the `required` list of tool schema parameters, as LLMs frequently omit auxiliary risk metadata when generating tool calls."
+  - "Do not modify files directly inside running Docker containers without persisting corresponding patches in `/home/ubuntu/openhand/patches/` and mounting them via `docker-compose.yml`."
+  - "Do not bypass `FunctionCallValidationError` by silencing all validation errors; explicitly decouple metadata requirements from critical parameter enforcement."
+
+reason:
+  "When `security_risk` is marked as a required parameter, standard function-calling and XML parsers reject otherwise valid tool invocations (such as `execute_bash(command=...)`) with `FunctionCallValidationError: Missing required parameters for function 'execute_bash': {'security_risk'}`. This triggers infinite error-correction loops and task failure."
+
+related_items:
+  - ARCH-DEPLOY-001
+  - PROD-LLM-001
+  - DEV-BUDGET-001

@@ -1,0 +1,41 @@
+id: DEV-BUDGET-001
+type: development_standard
+title: Mandatory VM Resource & Capacity Budget Check Standard
+domain: development
+status: approved
+version: 1.2.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: site_reliability_engineering
+
+applies_to:
+  - scripts/budget_check.py
+  - /usr/local/bin/vm-budget-check
+  - docker-compose.yml
+  - .env
+  - state/
+
+rule:
+  "On every infrastructure, container, software, or configuration change on the VM, execute `vm-budget-check` to verify that disk storage, memory, swap, and Docker runtime sandboxes remain strictly within Oracle Cloud Infrastructure (OCI) Always-Free quota limits and host health thresholds, preserving exactly 1 warm standby container and pruning excess ones on cleanup."
+
+do:
+  - "Run `vm-budget-check` immediately after installing packages, pulling models, rebuilding containers, or updating gateway/OpenHands configurations."
+  - "Ensure root disk space usage remains under 75% (warning at 75%, critical at 85%) of the 96GB root partition (within OCI's 200GB free boot volume tier)."
+  - "Ensure system available memory maintains at least 2.0 GB headroom to prevent kernel OOM killer actions during concurrent sandbox compilation."
+  - "Monitor active `openhands-runtime-*` sibling containers; run `vm-budget-check --cleanup` to preserve 1 warm standby container (for 0-second task startup) while stopping and pruning excess older runtime containers and dangling Docker resources."
+  - "Verify local LLM inference configurations (Ollama) maintain zero cloud API expenditures."
+
+dont:
+  - "Do not commit changes or mark VM configuration tasks complete without executing a verified budget check."
+  - "Do not allow stopped or dangling runtime containers to accumulate indefinitely; use `vm-budget-check --cleanup` or `docker container prune` regularly."
+  - "Do not pull multiple simultaneous large models into Ollama that would exceed the 75% disk utilization ceiling."
+
+reason:
+  "OCI Always-Free instances enforce strict resource boundaries (11GB RAM, 200GB total storage pool across instances, 4 OCPUs). Running autonomous agent frameworks like OpenHands—which dynamically spawn containerized sandboxes and local neural models—can rapidly exhaust memory or disk if unmonitored. Standardizing post-change budget checks prevents server downtime, runaway disk exhaustion, and unexpected billing."
+
+related_items:
+  - ARCH-DEPLOY-001
+  - DEV-OPS-001
+  - PROD-LLM-001

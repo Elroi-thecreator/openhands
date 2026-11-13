@@ -1,0 +1,31 @@
+id: ADR-001
+type: decision_record
+title: Custom FastAPI Web Gateway with Session Authentication over Basic Auth
+domain: decisions
+status: accepted
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: architecture_review
+
+context:
+  "OpenHands does not provide built-in access control in its standalone container. Exposing the container directly over the internet creates an immediate security hazard because the agent can execute arbitrary commands via the host Docker daemon. We evaluated HTTP Basic Auth (via Nginx), OAuth2-Proxy, and a custom FastAPI reverse proxy gateway."
+
+decision:
+  "We engineered and deployed a dedicated FastAPI web gateway featuring a responsive HTML5 dark-theme login page, HMAC-SHA256 session cookie authentication, and asynchronous HTTP and WebSocket proxy forwarding to the internal container."
+
+consequences:
+  positive:
+    - "Clean user experience: modern login screen with auto-redirection to the requested path after sign-in."
+    - "Reliable session management: proper logout endpoint (`/gateway/logout`) without relying on browser credential caching quirks."
+    - "Full WebSocket transparency: real-time streaming of agent steps, terminal interactions, and file edits functions seamlessly."
+    - "Resilience: auto-restarting 503 standby page during container reboots prevents confusing browser gateway errors."
+  negative:
+    - "Introduces an additional lightweight Python daemon service (~38 MB RAM footprint) to manage via systemd."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - DEV-PROXY-001
+  - PROD-AUTH-001

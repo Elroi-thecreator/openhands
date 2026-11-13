@@ -1,0 +1,38 @@
+id: PROD-LLM-001
+type: product_standard
+title: LLM Provider Integration (Local Ollama LLaMA, Google Gemini & Colab GPU) Standard
+domain: product
+status: approved
+version: 1.4.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - .env
+  - docker-compose.yml
+  - state/settings.json
+  - OpenHands Web UI Settings
+  - /etc/systemd/system/ollama.service.d/override.conf
+
+rule:
+  "OpenHands on resource-constrained cloud environments (such as OCI Free Tier 2-vCPU VMs) must avoid CPU-bound local inference for agent workloads with 10k+ token prompts, favoring hardware-accelerated free providers (Google Gemini 3.5 Flash or Colab T4 GPU) for responsive execution without timeouts."
+
+do:
+  - "Use `gemini/gemini-3.5-flash` or `gemini/gemini-3-flash-preview` with a Google AI Studio API key (free tier: 1M context, 15 RPM, zero CPU load on VM, ~1.5s latency)."
+  - "When open-weight models (Llama 3.2 / Qwen 2.5 Coder) are required, run them on free GPU runtimes like Google Colab T4 (via `workspace/OpenHands_LLM_Colab.ipynb`) where Tensor Cores evaluate 10k token prompts in under 2 seconds."
+  - "If running locally on 2 vCPUs, understand that CPU-only prefill of OpenHands' ~10,500 token system prompt takes 12–15 minutes, exceeding LiteLLM's 600-second timeout and pegging both CPU cores at 100%."
+  - "Execute `vm-budget-check` to monitor CPU load, memory headroom, and Ollama status."
+
+dont:
+  - "Do not rely on 2-vCPU CPU-only local LLMs for multi-turn autonomous agent loops with large system prompts (>5k tokens), as CPU matrix operations will trigger `litellm.Timeout: Connection timed out after 600.0s`."
+  - "Do not leave runaway CPU-pegged `llama-server` processes running; restart Ollama (`sudo systemctl restart ollama`) if an agent request times out."
+
+reason:
+  "Ollama provides zero-cost, private, rate-limit-free inference directly on the OCI VM. Setting strict concurrency bounds and using Llama 3.2 3B keeps memory well within the VM's 11 GB RAM and 73 GB disk capacity while delivering sub-second response times without incurring cloud API costs."
+
+related_items:
+  - ARCH-DEPLOY-001
+  - ADR-002

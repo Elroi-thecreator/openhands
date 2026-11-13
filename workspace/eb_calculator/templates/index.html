@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tamil Nadu EB Bill Calculator | தமிழ்நாடு மின் கட்டணக் கணக்கிடு</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Madurai:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', 'Hind Madurai', sans-serif;
+        }
+        .tamil-font {
+            font-family: 'Hind Madurai', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-amber-600 text-white shadow-lg">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-700 p-2.5 rounded-xl shadow-inner">
+                    <i class="fa-solid fa-bolt text-yellow-300 text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight" id="hdr-title">TN EB Bill Calculator</h1>
+                    <p class="text-xs text-amber-100" id="hdr-subtitle">TANGEDCO Tariff Rates 2024 - 2025 (Bi-Monthly & Monthly)</p>
+                </div>
+            </div>
+            <button id="lang-toggle-btn" class="bg-amber-700 hover:bg-amber-800 text-white font-medium text-sm px-4 py-2 rounded-lg transition border border-amber-500 shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-language text-lg"></i>
+                <span id="lang-btn-text">தமிழ் / English</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto px-4 py-6 flex-grow w-full grid grid-cols-1 md:grid-cols-12 gap-6">
+
+        <!-- Controls Section -->
+        <div class="md:col-span-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 border-b pb-3 mb-5 flex items-center gap-2" id="input-sec-title">
+                    <i class="fa-solid fa-sliders text-amber-600"></i> Enter Connection Details
+                </h2>
+
+                <!-- Tariff Type Selection -->
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2" id="lbl-tariff">
+                        Consumer Category / Tariff Type
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="tariff-options">
+                        <label class="cursor-pointer border-2 border-amber-600 bg-amber-50 p-3 rounded-xl flex items-center gap-3 transition" id="lbl-opt-res">
+                            <input type="radio" name="tariff" value="domestic" checked class="accent-amber-600 w-4 h-4">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-900" id="opt-res-title">Domestic (1A)</div>
+                                <div class="text-xs text-slate-5xl text-slate-500" id="opt-res-desc">Home / Residences</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-slate-200 p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition" id="lbl-opt-com">
+                            <input type="radio" name="tariff" value="commercial" class="accent-amber-600 w-4 h-4">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-900" id="opt-com-title">Commercial (V)</div>
+                                <div class="text-xs text-slate-500" id="opt-com-desc">Shops / Offices / Business</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-slate-200 p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition" id="lbl-opt-hutt">
+                            <input type="radio" name="tariff" value="hut" class="accent-amber-600 w-4 h-4">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-900" id="opt-hut-title">Hut / Poor (1B)</div>
+                                <div class="text-xs text-slate-500" id="opt-hut-desc">Hut Domestic</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-slate-200 p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition" id="lbl-opt-agr">
+                            <input type="radio" name="tariff" value="agriculture" class="accent-amber-600 w-4 h-4">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-900" id="opt-agr-title">Agriculture (IV)</div>
+                                <div class="text-xs text-slate-500" id="opt-agr-desc">Farms & Irrigation</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-slate-200 p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition sm:col-span-2" id="lbl-opt-pow">
+                            <input type="radio" name="tariff" value="powerloom" class="accent-amber-600 w-4 h-4">
+                            <div>
+                                <div class="font-semibold text-sm text-slate-900" id="opt-pow-title">Cottage / Powerloom (III-A1)</div>
+                                <div class="text-xs text-slate-500" id="opt-pow-desc">Small Scale Weaving / Cottage Industry</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Billing Cycle selection -->
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2" id="lbl-cycle">Billing Cycle Period</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" id="btn-cycle-bi" class="py-2.5 px-4 rounded-xl border-2 border-amber-600 bg-amber-600 text-white text-sm font-semibold shadow-sm transition">
+                            <i class="fa-regular fa-calendar-days mr-1"></i> <span id="txt-cycle-bi">Bi-Monthly (2 Months)</span>
+                        </button>
+                        <button type="button" id="btn-cycle-mono" class="py-2.5 px-4 rounded-xl border-2 border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
+                            <i class="fa-regular fa-calendar mr-1"></i> <span id="txt-cycle-mono">Monthly (1 Month)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Units Input -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label for="units-input" class="text-sm font-semibold text-slate-700" id="lbl-units">
+                            Total Units Consumed (kWh)
+                        </label>
+                        <span class="text-xs text-slate-500" id="lbl-helper-units">Enter units from meter</span>
+                    </div>
+                    <div class="relative">
+                        <input type="number" id="units-input" min="0" value="350" placeholder="e.g. 250"
+                            class="w-full text-2xl font-bold px-4 py-3 border-2 border-slate-300 rounded-xl focus:outline-none focus:border-amber-600 transition text-slate-800">
+                        <span class="absolute right-4 top-4 text-slate-400 font-medium text-sm">Units</span>
+                    </div>
+                </div>
+
+                <!-- Solar / Subsidy Option for Domestic -->
+                <div id="domestic-options" class="mb-5 bg-amber-50/60 p-3.5 rounded-xl border border-amber-200/80">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="gov-subsidy-check" checked class="w-4 h-4 text-amber-600 rounded accent-amber-600">
+                        <span class="text-xs font-semibold text-amber-900" id="lbl-subsidy">Include 100 Free Units Government Subsidy</span>
+                    </label>
+                    <p class="text-[11px] text-amber-700 mt-1 pl-6" id="desc-subsidy">First 100 units bi-monthly are free of charge for domestic connections.</p>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button id="calc-btn" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-base font-bold py-3.5 px-6 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-calculator"></i> <span id="btn-calc-text">Calculate Bill Amount</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Output Results Section -->
+        <div class="md:col-span-6 flex flex-col gap-5">
+            <!-- Total Amount Card -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-md relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 text-white/5 text-9xl font-black select-none pointer-events-none">
+                    <i class="fa-solid fa-indian-rupee-sign"></i>
+                </div>
+                
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-amber-400 bg-amber-900/40 px-2.5 py-1 rounded-md border border-amber-500/30" id="res-badge">
+                        Estimated Total
+                    </span>
+                    <span class="text-xs text-slate-400" id="res-cycle-label">Bi-Monthly Charge</span>
+                </div>
+
+                <div class="mt-4 mb-2">
+                    <div class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white flex items-baseline gap-1">
+                        <span class="text-3xl sm:text-4xl text-amber-400">₹</span>
+                        <span id="res-total-amount">0.00</span>
+                    </div>
+                </div>
+
+                <p class="text-xs text-slate-300 mt-2 flex items-center gap-1.5" id="res-summary">
+                    <i class="fa-solid fa-circle-info text-amber-400"></i> <span id="res-summary-txt">Based on TANGEDCO 2024-2025 Tariff</span>
+                </p>
+            </div>
+
+            <!-- Detailed Breakdown -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex-grow">
+                <h3 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b flex items-center justify-between">
+                    <span id="hdr-breakdown"><i class="fa-solid fa-list-check text-amber-600 mr-2"></i> Bill Calculation Breakdown</span>
+                    <span class="text-xs font-normal text-slate-500" id="lbl-slab-title">Slab Wise Rates</span>
+                </h3>
+
+                <!-- Slab Table -->
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full text-xs sm:text-sm text-left">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                            <tr>
+                                <th class="py-2 px-3 rounded-l-lg" id="th-slab">Slab Range</th>
+                                <th class="py-2 px-2 text-center" id="th-units">Units</th>
+                                <th class="py-2 px-2 text-right" id="th-rate">Rate / Unit</th>
+                                <th class="py-2 px-3 text-right rounded-r-lg" id="th-cost">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="slab-rows" class="divide-y divide-slate-100 font-medium">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Fixed Charges & Charges Summary -->
+                <div class="space-y-2 border-t pt-3 text-xs sm:text-sm text-slate-600">
+                    <div class="flex justify-between items-center">
+                        <span id="lbl-energy-charges">Energy Charges Total</span>
+                        <span class="font-semibold text-slate-800" id="res-energy-total">₹ 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span id="lbl-fixed-charges">Fixed / Service Charge</span>
+                        <span class="font-semibold text-slate-800" id="res-fixed-charges">₹ 0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-amber-700 bg-amber-50 p-2 rounded-lg" id="row-subsidy">
+                        <span id="lbl-subsidy-applied">Subsidy Savings (100 Free Units)</span>
+                        <span class="font-bold text-emerald-600" id="res-subsidy-amount">- ₹ 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Slab Rates Reference Accordion / Info Box -->
+    <section class="max-w-5xl mx-auto px-4 pb-8 w-full">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2" id="hdr-tangedco-info">
+                <i class="fa-solid fa-circle-question text-amber-600"></i> TANGEDCO Domestic Tariff Slab Info (Bi-Monthly)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 leading-relaxed">
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-slate-800 mb-1" id="info-res-title">Domestic Connection (Tariff 1A)</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>0 - 100 units:</strong> Free (₹0.00 / unit) with Govt Subsidy</li>
+                        <li><strong>101 - 200 units:</strong> ₹2.35 / unit</li>
+                        <li><strong>201 - 400 units:</strong> ₹4.70 / unit</li>
+                        <li><strong>401 - 500 units:</strong> ₹6.30 / unit</li>
+                        <li><strong>Above 500 units:</strong> Special slabs applicable (₹8.40, ₹9.50, ₹11.55 / unit)</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 class="font-bold text-slate-800 mb-1" id="info-tips-title">Important Billing Tips</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>TANGEDCO assesses domestic power bi-monthly (every 2 months).</li>
+                        <li>The government provides first 100 units totally free for home users.</li>
+                        <li>Keeping bi-monthly consumption below 500 units avoids higher rate slabs.</li>
+                        <li>Commercial & powerloom tariffs have fixed monthly charges per kW/connection.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-6 border-t border-slate-800 text-center text-xs">
+        <div class="max-w-5xl mx-auto px-4">
+            <p id="ftr-txt">Tamil Nadu TANGEDCO Electricity Bill Calculator | Designed for quick and precise bill estimations in TN.</p>
+            <p class="mt-1 text-slate-500">Note: Rates are based on official TANGEDCO tariff schedule 2024-2025.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Language Dictionary
+        const i18n = {
+            en: {
+                hdrTitle: "TN EB Bill Calculator",
+                hdrSubtitle: "TANGEDCO Tariff Rates 2024 - 2025 (Bi-Monthly & Monthly)",
+                langBtn: "தமிழ்",
+                inputSecTitle: "Enter Connection Details",
+                lblTariff: "Consumer Category / Tariff Type",
+                optResTitle: "Domestic (1A)",
+                optResDesc: "Home / Residences",
+                optComTitle: "Commercial (V)",
+                optComDesc: "Shops / Offices / Business",
+                optHutTitle: "Hut / Poor (1B)",
+                optHutDesc: "Hut Domestic",
+                optAgrTitle: "Agriculture (IV)",
+                optAgrDesc: "Farms & Irrigation",
+                optPowTitle: "Cottage / Powerloom (III-A1)",
+                optPowDesc: "Small Scale Weaving / Cottage",
+                lblCycle: "Billing Cycle Period",
+                txtCycleBi: "Bi-Monthly (2 Months)",
+                txtCycleMono: "Monthly (1 Month)",
+                lblUnits: "Total Units Consumed (kWh)",
+                lblHelperUnits: "Enter units from meter",
+                lblSubsidy: "Include 100 Free Units Government Subsidy",
+                descSubsidy: "First 100 units bi-monthly are free of charge for domestic connections.",
+                btnCalcText: "Calculate Bill Amount",
+                resBadge: "Estimated Total",
+                resCycleBiLabel: "Bi-Monthly Bill Charge",
+                resCycleMonoLabel: "Monthly Bill Charge",
+                resSummaryTxt: "Based on TANGEDCO 2024-2025 Tariff",
+                hdrBreakdown: "Bill Calculation Breakdown",
+                lblSlabTitle: "Slab Wise Rates",
+                thSlab: "Slab Range",
+                thUnits: "Units",
+                thRate: "Rate / Unit",
+                thCost: "Amount",
+                lblEnergyCharges: "Energy Charges Total",
+                lblFixedCharges: "Fixed / Service Charge",
+                lblSubsidyApplied: "Subsidy Savings (100 Free Units)",
+                hdrTangedcoInfo: "TANGEDCO Domestic Tariff Slab Info (Bi-Monthly)",
+                infoResTitle: "Domestic Connection (Tariff 1A)",
+                infoTipsTitle: "Important Billing Tips",
+                ftrTxt: "Tamil Nadu TANGEDCO Electricity Bill Calculator | Designed for quick and precise bill estimations in TN."
+            },
+            ta: {
+                hdrTitle: "தமிழ்நாடு மின் கட்டணக் கணக்கிடு",
+                hdrSubtitle: "டாங்கெட்கோ மின் கட்டண விகிதங்கள் 2024 - 2025 (இரு மாத & மாதவாரி)",
+                langBtn: "English",
+                inputSecTitle: "மின் இணைப்பு விவரங்களை உள்ளிடவும்",
+                lblTariff: "மின் நுகர்வோர் வகை / கட்டண முறை",
+                optResTitle: "வீட்டு உபயோகம் (1A)",
+                optResDesc: "வீடு / குடியிருப்பு",
+                optComTitle: "வணிக பயன்பாடு (V)",
+                optComDesc: "கடைகள் / அலுவலகம் / தொழில்",
+                optHutTitle: "குடில் / ஏழை (1B)",
+                optHutDesc: "குடில் வீட்டு மின்சாரம்",
+                optAgrTitle: "விவசாயம் (IV)",
+                optAgrDesc: "விவசாய நிலங்கள் & பாசனம்",
+                optPowTitle: "விசைத்தறி / குடிசை (III-A1)",
+                optPowDesc: "சிறு நெசவுத் தொழில் / குடிசைத் தொழில்",
+                lblCycle: "மின் கட்டண காலம்",
+                txtCycleBi: "இரு மாதங்கள் (2 Months)",
+                txtCycleMono: "ஒரு மாதம் (1 Month)",
+                lblUnits: "மொத்த மின் பயன்பாடு (யூனிட்)",
+                lblHelperUnits: "மீட்டரில் உள்ள யூனிட்களை உள்ளிடவும்",
+                lblSubsidy: "100 இலவச யூனிட் அரசு மானியத்தை சேர்க்கவும்",
+                descSubsidy: "வீட்டு மின் இணைப்புகளுக்கு முதல் 100 யூனிட் கட்டணமில்லா இலவசம்.",
+                btnCalcText: "மின் கட்டணத்தை கணக்கிடு",
+                resBadge: "தோராய மொத்தக் கட்டணம்",
+                resCycleBiLabel: "இரு மாத மின் கட்டணம்",
+                resCycleMonoLabel: "ஒரு மாத மின் கட்டணம்",
+                resSummaryTxt: "டாங்கெட்கோ 2024-2025 கட்டண விகிதப்படி",
+                hdrBreakdown: "கட்டணக் கணக்கீட்டு விவரம்",
+                lblSlabTitle: "ஸ்லாப் வாரியான விகிதம்",
+                thSlab: "யூனிட் வரம்பு",
+                thUnits: "யூனிட்",
+                thRate: "விகிதம் / யூனிட்",
+                thCost: "தொகை",
+                lblEnergyCharges: "மொத்த மின் பயன்பாட்டுக் கட்டணம்",
+                lblFixedCharges: "நிலையான / சேவை கட்டணம்",
+                lblSubsidyApplied: "அரசு மானிய சேமிப்பு (100 இலவச யூனிட்)",
+                hdrTangedcoInfo: "டாங்கெட்கோ வீட்டு மின் கட்டண ஸ்லாப் விவரம் (இரு மாதம்)",
+                infoResTitle: "வீட்டு மின் இணைப்பு (கட்டணம் 1A)",
+                infoTipsTitle: "முக்கிய குறிப்புகள்",
+                ftrTxt: "தமிழ்நாடு டாங்கெட்கோ மின் கட்டணக் கணிப்பான் | விரைவான மற்றும் துல்லியமான கட்டணக் கணக்கீட்டிற்கு."
+            }
+        };
+
+        let currentLang = 'ta'; // Default to Tamil for TN users
+        let cycle = 'bimonthly'; // bimonthly or monthly
+
+        // DOM elements
+        const langBtn = document.getElementById('lang-toggle-btn');
+        const unitsInput = document.getElementById('units-input');
+        const calcBtn = document.getElementById('calc-btn');
+        const btnCycleBi = document.getElementById('btn-cycle-bi');
+        const btnCycleMono = document.getElementById('btn-cycle-mono');
+        const domesticOptions = document.getElementById('domestic-options');
+        const govSubsidyCheck = document.getElementById('gov-subsidy-check');
+        const tariffRadios = document.querySelectorAll('input[name="tariff"]');
+
+        // Toggle Language
+        function switchLanguage(lang) {
+            currentLang = lang;
+            const t = i18n[lang];
+
+            document.getElementById('hdr-title').innerText = t.hdrTitle;
+            document.getElementById('hdr-subtitle').innerText = t.hdrSubtitle;
+            document.getElementById('lang-btn-text').innerText = t.langBtn;
+            document.getElementById('input-sec-title').innerHTML = `<i class="fa-solid fa-sliders text-amber-600"></i> ${t.inputSecTitle}`;
+            document.getElementById('lbl-tariff').innerText = t.lblTariff;
+            document.getElementById('opt-res-title').innerText = t.optResTitle;
+            document.getElementById('opt-res-desc').innerText = t.optResDesc;
+            document.getElementById('opt-com-title').innerText = t.optComTitle;
+            document.getElementById('opt-com-desc').innerText = t.optComDesc;
+            document.getElementById('opt-hut-title').innerText = t.optHutTitle;
+            document.getElementById('opt-hut-desc').innerText = t.optHutDesc;
+            document.getElementById('opt-agr-title').innerText = t.optAgrTitle;
+            document.getElementById('opt-agr-desc').innerText = t.optAgrDesc;
+            document.getElementById('opt-pow-title').innerText = t.optPowTitle;
+            document.getElementById('opt-pow-desc').innerText = t.optPowDesc;
+
+            document.getElementById('lbl-cycle').innerText = t.lblCycle;
+            document.getElementById('txt-cycle-bi').innerText = t.txtCycleBi;
+            document.getElementById('txt-cycle-mono').innerText = t.txtCycleMono;
+            document.getElementById('lbl-units').innerText = t.lblUnits;
+            document.getElementById('lbl-helper-units').innerText = t.lblHelperUnits;
+            document.getElementById('lbl-subsidy').innerText = t.lblSubsidy;
+            document.getElementById('desc-subsidy').innerText = t.descSubsidy;
+            document.getElementById('btn-calc-text').innerText = t.btnCalcText;
+
+            document.getElementById('res-badge').innerText = t.resBadge;
+            document.getElementById('res-cycle-label').innerText = cycle === 'bimonthly' ? t.resCycleBiLabel : t.resCycleMonoLabel;
+            document.getElementById('res-summary-txt').innerText = t.resSummaryTxt;
+            document.getElementById('hdr-breakdown').innerHTML = `<i class="fa-solid fa-list-check text-amber-600 mr-2"></i> ${t.hdrBreakdown}`;
+            document.getElementById('lbl-slab-title').innerText = t.lblSlabTitle;
+
+            document.getElementById('th-slab').innerText = t.thSlab;
+            document.getElementById('th-units').innerText = t.thUnits;
+            document.getElementById('th-rate').innerText = t.thRate;
+            document.getElementById('th-cost').innerText = t.thCost;
+
+            document.getElementById('lbl-energy-charges').innerText = t.lblEnergyCharges;
+            document.getElementById('lbl-fixed-charges').innerText = t.lblFixedCharges;
+            document.getElementById('lbl-subsidy-applied').innerText = t.lblSubsidyApplied;
+
+            document.getElementById('hdr-tangedco-info').innerHTML = `<i class="fa-solid fa-circle-question text-amber-600"></i> ${t.hdrTangedcoInfo}`;
+            document.getElementById('info-res-title').innerText = t.infoResTitle;
+            document.getElementById('info-tips-title').innerText = t.infoTipsTitle;
+            document.getElementById('ftr-txt').innerText = t.ftrTxt;
+
+            calculateBill();
+        }
+
+        langBtn.addEventListener('click', () => {
+            switchLanguage(currentLang === 'ta' ? 'en' : 'ta');
+        });
+
+        // Cycle Buttons
+        btnCycleBi.addEventListener('click', () => {
+            cycle = 'bimonthly';
+            btnCycleBi.className = "py-2.5 px-4 rounded-xl border-2 border-amber-600 bg-amber-600 text-white text-sm font-semibold shadow-sm transition";
+            btnCycleMono.className = "py-2.5 px-4 rounded-xl border-2 border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition";
+            document.getElementById('res-cycle-label').innerText = i18n[currentLang].resCycleBiLabel;
+            calculateBill();
+        });
+
+        btnCycleMono.addEventListener('click', () => {
+            cycle = 'monthly';
+            btnCycleMono.className = "py-2.5 px-4 rounded-xl border-2 border-amber-600 bg-amber-600 text-white text-sm font-semibold shadow-sm transition";
+            btnCycleBi.className = "py-2.5 px-4 rounded-xl border-2 border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition";
+            document.getElementById('res-cycle-label').innerText = i18n[currentLang].resCycleMonoLabel;
+            calculateBill();
+        });
+
+        // Tariff selection styling
+        tariffRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                tariffRadios.forEach(r => {
+                    const parent = r.closest('label');
+                    if (r.checked) {
+                        parent.className = "cursor-pointer border-2 border-amber-600 bg-amber-50 p-3 rounded-xl flex items-center gap-3 transition" + (r.value==='powerloom'?' sm:col-span-2':'');
+                    } else {
+                        parent.className = "cursor-pointer border-2 border-slate-200 p-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition" + (r.value==='powerloom'?' sm:col-span-2':'');
+                    }
+                });
+
+                if (e.target.value === 'domestic') {
+                    domesticOptions.style.display = 'block';
+                } else {
+                    domesticOptions.style.display = 'none';
+                }
+                calculateBill();
+            });
+        });
+
+        unitsInput.addEventListener('input', calculateBill);
+        govSubsidyCheck.addEventListener('change', calculateBill);
+        calcBtn.addEventListener('click', calculateBill);
+
+        // Core Calculation Function
+        function calculateBill() {
+            let units = parseFloat(unitsInput.value) || 0;
+            if (units < 0) units = 0;
+
+            const selectedTariff = document.querySelector('input[name="tariff"]:checked').value;
+            const includeSubsidy = govSubsidyCheck.checked;
+
+            let slabs = [];
+            let fixedCharges = 0;
+            let totalAmount = 0;
+            let subsidyAmount = 0;
+
+            if (selectedTariff === 'hut' || selectedTariff === 'agriculture') {
+                // Free tariffs
+                slabs = [{
+                    range: currentLang === 'ta' ? 'அனைத்து பயன்பாடுகளும்' : 'All Consumption',
+                    units: units,
+                    rate: 0,
+                    cost: 0
+                }];
+                totalAmount = 0;
+                fixedCharges = 0;
+            } 
+            else if (selectedTariff === 'commercial') {
+                // Commercial Tariff V (Monthly / Bi-Monthly scaling)
+                // Commercial rates: 0-100: 6.30/unit, 101+: 9.95/unit. Fixed charge ~ ₹100
+                const multiplier = cycle === 'bimonthly' ? 2 : 1;
+                const limit1 = 100 * multiplier;
+
+                if (units <= limit1) {
+                    const cost1 = units * 6.30;
+                    slabs.push({ range: `0 - ${limit1}`, units: units, rate: 6.30, cost: cost1 });
+                } else {
+                    const cost1 = limit1 * 6.30;
+                    const remUnits = units - limit1;
+                    const cost2 = remUnits * 9.95;
+                    slabs.push({ range: `0 - ${limit1}`, units: limit1, rate: 6.30, cost: cost1 });
+                    slabs.push({ range: `>${limit1}`, units: remUnits, rate: 9.95, cost: cost2 });
+                }
+                fixedCharges = 100 * multiplier;
+            }
+            else if (selectedTariff === 'powerloom') {
+                // Cottage / Powerloom III-A1
+                // 0-500 free, 501-1000: 3.65, >1000: 6.35 (Bi-monthly scaled)
+                const mult = cycle === 'bimonthly' ? 2 : 1;
+                const limit1 = 500 * mult;
+                const limit2 = 1000 * mult;
+
+                if (units <= limit1) {
+                    slabs.push({ range: `0 - ${limit1}`, units: units, rate: 0, cost: 0 });
+                } else if (units <= limit2) {
+                    slabs.push({ range: `0 - ${limit1}`, units: limit1, rate: 0, cost: 0 });
+                    const rem = units - limit1;
+                    slabs.push({ range: `${limit1+1} - ${limit2}`, units: rem, rate: 3.65, cost: rem * 3.65 });
+                } else {
+                    slabs.push({ range: `0 - ${limit1}`, units: limit1, rate: 0, cost: 0 });
+                    slabs.push({ range: `${limit1+1} - ${limit2}`, units: 500 * mult, rate: 3.65, cost: (500 * mult) * 3.65 });
+                    const rem = units - limit2;
+                    slabs.push({ range: `>${limit2}`, units: rem, rate: 6.35, cost: rem * 6.35 });
+                }
+                fixedCharges = 0;
+            }
+            else {
+                // DOMESTIC TARIFF 1A (TN TANGEDCO 2024-2025)
+                // Default calculation is based on Bi-Monthly (2 months).
+                // Scale factor for Monthly mode is 0.5
+                const scale = cycle === 'bimonthly' ? 1.0 : 0.5;
+
+                const s100 = 100 * scale;
+                const s200 = 200 * scale;
+                const s400 = 400 * scale;
+                const s500 = 500 * scale;
+
+                if (units <= s500) {
+                    // Scenario A: Total units <= 500
+                    // 0-100: Rs 0 (with subsidy) or Rs 4.70 (without)
+                    const u100 = Math.min(units, s100);
+                    const r100 = includeSubsidy ? 0 : 4.70;
+                    const c100 = u100 * r100;
+                    slabs.push({ range: `0 - ${s100}`, units: u100, rate: r100, cost: c100 });
+                    if (!includeSubsidy && u100 > 0) {
+                        subsidyAmount = 0;
+                    } else if (includeSubsidy && u100 > 0) {
+                        subsidyAmount = u100 * 4.70;
+                    }
+
+                    if (units > s100) {
+                        // 101-200 units @ 2.35
+                        const u200 = Math.min(units - s100, 100 * scale);
+                        const c200 = u200 * 2.35;
+                        slabs.push({ range: `${s100+1} - ${s200}`, units: u200, rate: 2.35, cost: c200 });
+
+                        if (units > s200) {
+                            // 201-400 units @ 4.70
+                            const u400 = Math.min(units - s200, 200 * scale);
+                            const c400 = u400 * 4.70;
+                            slabs.push({ range: `${s200+1} - ${s400}`, units: u400, rate: 4.70, cost: c400 });
+
+                            if (units > s400) {
+                                // 401-500 units @ 6.30
+                                const u500 = units - s400;
+                                const c500 = u500 * 6.30;
+                                slabs.push({ range: `${s400+1} - ${s500}`, units: u500, rate: 6.30, cost: c500 });
+                            }
+                        }
+                    }
+                } else {
+                    // Scenario B: Consumption > 500 units
+                    // 0-100: Rs 0 (with subsidy) or 4.70
+                    const u100 = s100;
+                    const r100 = includeSubsidy ? 0 : 4.70;
+                    const c100 = u100 * r100;
+                    slabs.push({ range: `0 - ${s100}`, units: u100, rate: r100, cost: c100 });
+                    if (includeSubsidy) subsidyAmount = u100 * 4.70;
+
+                    // 101 - 400 @ 4.70
+                    const u400 = 300 * scale;
+                    const c400 = u400 * 4.70;
+                    slabs.push({ range: `${s100+1} - ${s400}`, units: u400, rate: 4.70, cost: c400 });
+
+                    // 401 - 500 @ 6.30
+                    const u500 = 100 * scale;
+                    const c500 = u500 * 6.30;
+                    slabs.push({ range: `${s400+1} - ${s500}`, units: u500, rate: 6.30, cost: c500 });
+
+                    let rem = units - s500;
+
+                    // 501 - 600 @ 8.40
+                    const u600 = Math.min(rem, 100 * scale);
+                    const c600 = u600 * 8.40;
+                    slabs.push({ range: `${s500+1} - ${600*scale}`, units: u600, rate: 8.40, cost: c600 });
+                    rem -= u600;
+
+                    if (rem > 0) {
+                        // 601 - 800 @ 9.50
+                        const u800 = Math.min(rem, 200 * scale);
+                        const c800 = u800 * 9.50;
+                        slabs.push({ range: `${600*scale+1} - ${800*scale}`, units: u800, rate: 9.50, cost: c800 });
+                        rem -= u800;
+
+                        if (rem > 0) {
+                            // 801 - 1000 @ 10.50
+                            const u1000 = Math.min(rem, 200 * scale);
+                            const c1000 = u1000 * 10.50;
+                            slabs.push({ range: `${800*scale+1} - ${1000*scale}`, units: u1000, rate: 10.50, cost: c1000 });
+                            rem -= u1000;
+
+                            if (rem > 0) {
+                                // Above 1000 @ 11.55
+                                const cAbove = rem * 11.55;
+                                slabs.push({ range: `>${1000*scale}`, units: rem, rate: 11.55, cost: cAbove });
+                            }
+                        }
+                    }
+                }
+                fixedCharges = 0; // Domestic fixed charges removed/included in TANGEDCO revised slabs
+            }
+
+            // Render table & totals
+            const tbody = document.getElementById('slab-rows');
+            tbody.innerHTML = '';
+
+            let energyTotal = 0;
+            slabs.forEach(s => {
+                energyTotal += s.cost;
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-50 transition-colors';
+                row.innerHTML = `
+                    <td class="py-2.5 px-3 font-semibold text-slate-800">${s.range}</td>
+                    <td class="py-2.5 px-2 text-center text-slate-600">${s.units.toFixed(0)}</td>
+                    <td class="py-2.5 px-2 text-right text-slate-600">₹ ${s.rate.toFixed(2)}</td>
+                    <td class="py-2.5 px-3 text-right font-bold text-slate-900">₹ ${s.cost.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            totalAmount = energyTotal + fixedCharges;
+
+            document.getElementById('res-total-amount').innerText = totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('res-energy-total').innerText = `₹ ${energyTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            document.getElementById('res-fixed-charges').innerText = `₹ ${fixedCharges.toFixed(2)}`;
+
+            const subsidyRow = document.getElementById('row-subsidy');
+            if (selectedTariff === 'domestic' && includeSubsidy && subsidyAmount > 0) {
+                subsidyRow.style.display = 'flex';
+                document.getElementById('res-subsidy-amount').innerText = `- ₹ ${subsidyAmount.toFixed(2)}`;
+            } else {
+                subsidyRow.style.display = 'none';
+            }
+        }
+
+        // Initial setup
+        switchLanguage('ta');
+    </script>
+</body>
+</html>

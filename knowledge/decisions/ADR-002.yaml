@@ -1,0 +1,29 @@
+id: ADR-002
+type: decision_record
+title: Binding OpenHands Exclusively to Localhost Loopback Interface (127.0.0.1)
+domain: decisions
+status: accepted
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: architecture_review
+
+context:
+  "By default, Docker container port mappings like `-p 3000:3000` bind to `0.0.0.0:3000`, bypassing standard iptables filtering on Linux by directly configuring the DOCKER chain in the nat table. If port 3000 were exposed on public interfaces, anyone on the internet could access OpenHands without passing through the authentication gateway."
+
+decision:
+  "We explicitly bound the OpenHands port mapping to `127.0.0.1:3000:3000` in `docker-compose.yml`, ensuring that network traffic from non-localhost interfaces cannot reach the container directly."
+
+consequences:
+  positive:
+    - "Strict enforcement: 100% of external web traffic must traverse the authenticated gateway or Nginx SSL layer."
+    - "Protection against accidental firewall exposure: even if cloud security lists or iptables permit port 3000, outside packets are dropped because the socket listens only on loopback."
+  negative:
+    - "Direct local debugging from outside the host requires either the gateway, an SSH tunnel, or a reverse proxy."
+
+related_items:
+  - ARCH-DEPLOY-001
+  - ARCH-GATEWAY-001
+  - ARCH-NET-001

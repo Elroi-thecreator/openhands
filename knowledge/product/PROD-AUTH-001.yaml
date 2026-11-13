@@ -1,0 +1,39 @@
+id: PROD-AUTH-001
+type: product_standard
+title: Session Cookie Authentication, Secure Credentials & UI Login Experience Standard
+domain: product
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: product_security
+
+applies_to:
+  - gateway/templates/login.html
+  - gateway/main.py
+  - gateway/.env
+
+rule:
+  "The web gateway must provide a branded dark-theme login page, securely validate credentials, maintain session state via HTTP cookies, and allow users to authenticate once per browser session."
+
+do:
+  - "Present a clean glassmorphism dark-themed login interface matching the OpenHands aesthetic."
+  - "Redirect unauthenticated browser requests directly to `/gateway/login?next=<requested_path>` so users are returned to their destination after logging in."
+  - "Return JSON error responses (`401 Unauthorized`) for unauthenticated programmatic API calls and close unauthenticated WebSocket connections with `1008 Policy Violation`."
+  - "Provide a dedicated `/logout` (or `/gateway/logout`) endpoint that invalidates the session cookie and redirects users to the login interface."
+  - "Set `HttpOnly`, `SameSite=Lax`, and `Path=/` flags on the authentication cookie to prevent client-side XSS cookie harvesting."
+
+dont:
+  - "Do not use browser-native HTTP Basic Authentication dialogs, which fail to support custom logout flows and provide poor mobile/cross-browser user experience."
+  - "Do not display sensitive backend error traces on authentication failures; show friendly, concise validation messages."
+  - "Do not persist session tokens indefinitely without expiration timestamps."
+
+reason:
+  "A dedicated web application login interface delivers a user-friendly product experience, provides granular session control, and eliminates the usability and logout issues inherent to HTTP Basic Auth."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - DEV-OPS-001
+  - ADR-001

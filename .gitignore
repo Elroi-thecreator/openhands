@@ -1,0 +1,31 @@
+# Secret Credentials & Environment
+.env
+*.env
+gateway/.env
+state/
+
+# Virtual Environments & Python Caches
+.venv/
+gateway/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Package Managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Upstream Repositories & Build Clones
+openhands-repo/
+workspace/bibleweb/
+
+# Logs & Temporary Files
+*.log
+workspace/.downloads/
+workspace/.vscode/

@@ -1,0 +1,39 @@
+id: DEV-OPS-001
+type: development_standard
+title: Gateway Service Management, Systemd Daemons & Environment Configuration Standard
+domain: development
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: platform_engineering
+
+applies_to:
+  - /etc/systemd/system/openhands-gateway.service
+  - gateway/.env
+  - gateway/.venv/
+
+rule:
+  "The OpenHands gateway must run as a managed systemd background service executing inside an isolated virtual environment, loading configuration exclusively from gateway/.env."
+
+do:
+  - "Define the systemd service in `/etc/systemd/system/openhands-gateway.service` running as the `ubuntu` user and group."
+  - "Specify `Restart=always` with `RestartSec=5s` to guarantee automated recovery across process failures and reboots."
+  - "Execute Uvicorn using the virtual environment binary (`/home/ubuntu/openhand/gateway/.venv/bin/python -m uvicorn main:app`)."
+  - "Manage secrets (username, password, secret key, backend targets) in `/home/ubuntu/openhand/gateway/.env` with file permissions restricted to `600` or `640`."
+  - "Reload the systemd daemon (`sudo systemctl daemon-reload`) whenever unit files change, and verify service health with `systemctl status openhands-gateway`."
+
+dont:
+  - "Do not execute gateway processes manually in ephemeral terminal sessions or unmonitored tmux/screen tabs."
+  - "Do not commit production secrets or `.env` files into source control repositories."
+  - "Do not install gateway dependencies globally into the system Python runtime."
+
+reason:
+  "Systemd lifecycle management ensures high availability, process supervision, unified journald log retention, and clean boot recovery for production services."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - ARCH-DEPLOY-001
+  - PROD-AUTH-001

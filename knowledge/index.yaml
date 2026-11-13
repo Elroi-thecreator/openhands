@@ -1,0 +1,53 @@
+# OpenHands Master Knowledge Graph & Index
+system_name: OpenHands
+repository_root: "/home/ubuntu/openhand"
+knowledge_units_count: 13
+last_updated: "2026-11-13"
+
+knowledge_units:
+  architecture:
+    - id: ARCH-DEPLOY-001
+      file: "knowledge/architecture/ARCH-DEPLOY-001.yaml"
+      title: "Isolated Docker Container Sandbox & Daemon Architecture"
+    - id: ARCH-GATEWAY-001
+      file: "knowledge/architecture/ARCH-GATEWAY-001.yaml"
+      title: "FastAPI Authentication Reverse Proxy, WebSocket Tunnel & Antigravity Live Status HUD Architecture"
+    - id: ARCH-NET-001
+      file: "knowledge/architecture/ARCH-NET-001.yaml"
+      title: "Oracle Cloud (OCI) Ingress Security, Iptables & SSL Nginx Proxy Architecture"
+
+  development:
+    - id: DEV-BUDGET-001
+      file: "knowledge/development/DEV-BUDGET-001.yaml"
+      title: "Mandatory VM Resource & Capacity Budget Check Standard"
+    - id: DEV-OPS-001
+      file: "knowledge/development/DEV-OPS-001.yaml"
+      title: "Gateway Service Management, Systemd Daemons & Environment Configuration Standard"
+    - id: DEV-PROXY-001
+      file: "knowledge/development/DEV-PROXY-001.yaml"
+      title: "WebSocket & Streaming HTTP Proxying Standards with Hop-by-Hop Filtering"
+    - id: DEV-TOOL-001
+      file: "knowledge/development/DEV-TOOL-001.yaml"
+      title: "OpenHands Tool Schema Definition, Security Risk Decoupling & Function Call Converter Standard"
+
+  product:
+    - id: PROD-ANTIGRAVITY-001
+      file: "knowledge/product/PROD-ANTIGRAVITY-001.yaml"
+      title: "Antigravity Autonomous Agent Transformation, UI Styling & Microagent Protocol Standard"
+    - id: PROD-AUTH-001
+      file: "knowledge/product/PROD-AUTH-001.yaml"
+      title: "Session Cookie Authentication, Secure Credentials & UI Login Experience Standard"
+    - id: PROD-LLM-001
+      file: "knowledge/product/PROD-LLM-001.yaml"
+      title: "LLM Provider Integration (Local Ollama LLaMA, Google Gemini & Colab GPU) Standard"
+
+  decisions:
+    - id: ADR-001
+      file: "knowledge/decisions/ADR-001.yaml"
+      title: "Custom FastAPI Web Gateway with Session Authentication over Basic Auth"
+    - id: ADR-002
+      file: "knowledge/decisions/ADR-002.yaml"
+      title: "Binding OpenHands Exclusively to Localhost Loopback Interface (127.0.0.1)"
+    - id: ADR-003
+      file: "knowledge/decisions/ADR-003.yaml"
+      title: "Oracle Cloud Ingress Rules on Port 8443 with Let's Encrypt SSL"

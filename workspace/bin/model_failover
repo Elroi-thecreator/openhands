@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import json
+import urllib.request
+from pathlib import Path
+
+SETTINGS_PATHS = [
+    Path("/home/ubuntu/openhand/state/settings.json"),
+    Path("/.openhands/settings.json"),
+]
+
+
+def get_settings_file() -> Path | None:
+    for p in SETTINGS_PATHS:
+        if p.exists():
+            return p
+    return None
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Model Failover Switcher.")
+    parser.add_argument("--to", choices=["local", "gemini"], help="Switch active LLM model")
+    parser.add_argument("--status", action="store_true", help="Display active LLM configuration")
+    args = parser.parse_args()
+
+    settings_file = get_settings_file()
+    if not settings_file:
+        print("Error: settings.json could not be located.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        settings = json.loads(settings_file.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"Error reading settings: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.status or not args.to:
+        print("=======================================================")
+        print("⚡ ANTIGRAVITY LLM ENGINE STATUS")
+        print("=======================================================")
+        print(f"  • Current Model:    {settings.get('llm_model')}")
+        print(f"  • Base URL:         {settings.get('llm_base_url') or 'Default Cloud API'}")
+        print(f"  • Active Condenser: {settings.get('enable_default_condenser')} (max_size={settings.get('condenser_max_size')})")
+        print("=======================================================")
+        return
+
+    if args.to == "local":
+        settings["llm_model"] = "ollama/qwen2.5-coder:1.5b"
+        settings["llm_base_url"] = "http://host.docker.internal:11434"
+        settings["llm_api_key"] = "ollama"
+        settings_file.write_text(json.dumps(settings), encoding="utf-8")
+        print("✓ [Antigravity] Swapped to Local Zero-Cost Model: ollama/qwen2.5-coder:1.5b")
+        print("  • Provider: Ollama Local Inference (Host: 11434)")
+        print("  • Cost:     $0.00 (Immune to API rate limits)")
+
+    elif args.to == "gemini":
+        settings["llm_model"] = "gemini/gemini-3-flash-preview"
+        settings["llm_base_url"] = None
+        settings_file.write_text(json.dumps(settings), encoding="utf-8")
+        print("✓ [Antigravity] Swapped to Cloud High-Throughput Model: gemini/gemini-3-flash-preview")
+        print("  • Provider: Google AI Studio")
+        print("  • Context:  1M Token Window")
+
+
+if __name__ == "__main__":
+    main()

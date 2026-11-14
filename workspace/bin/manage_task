@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import json
+import urllib.request
+import urllib.error
+
+GATEWAY_URLS = [
+    os.getenv("ANTIGRAVITY_GATEWAY_URL", "http://172.17.0.1:8080"),
+    "http://127.0.0.1:8080",
+    "http://host.docker.internal:8080",
+]
+
+
+def call_api(path: str, method: str = "GET", data: dict = None) -> dict:
+    req_body = json.dumps(data).encode("utf-8") if data else None
+    headers = {"Content-Type": "application/json"} if req_body else {}
+
+    for base in GATEWAY_URLS:
+        url = f"{base}{path}"
+        try:
+            req = urllib.request.Request(url, data=req_body, headers=headers, method=method)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode())
+        except Exception:
+            continue
+    raise RuntimeError(f"Could not connect to Antigravity Gateway API at {path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Background Task Manager (manage_task).")
+    subparsers = parser.add_subparsers(dest="action", help="Action to execute")
+
+    # spawn
+    p_spawn = subparsers.add_parser("spawn", help="Spawn a background command")
+    p_spawn.add_argument("--command", "-c", required=True, help="Shell command to run")
+    p_spawn.add_argument("--summary", "-s", default="", help="Brief description of the command")
+
+    # list
+    p_list = subparsers.add_parser("list", help="List all background tasks")
+
+    # status
+    p_status = subparsers.add_parser("status", help="Get status of a specific task")
+    p_status.add_argument("task_id", help="Task ID")
+
+    # logs
+    p_logs = subparsers.add_parser("logs", help="Get logs of a task")
+    p_logs.add_argument("task_id", help="Task ID")
+    p_logs.add_argument("--tail", type=int, default=50, help="Number of lines to tail")
+
+    # send_input
+    p_input = subparsers.add_parser("send_input", help="Send stdin input to a running process")
+    p_input.add_argument("task_id", help="Task ID")
+    p_input.add_argument("--input", "-i", required=True, help="Text input to deliver")
+
+    # kill
+    p_kill = subparsers.add_parser("kill", help="Terminate a running task")
+    p_kill.add_argument("task_id", help="Task ID")
+
+    args = parser.parse_args()
+
+    if not args.action or args.action == "list":
+        res = call_api("/gateway/api/tasks")
+        tasks = res.get("tasks", [])
+        if not tasks:
+            print("No active or past background tasks.")
+            return
+        print(f"{'TASK ID':<16} {'STATUS':<12} {'PID':<8} {'SUMMARY'}")
+        print("-" * 65)
+        for t in tasks:
+            print(f"{t['id']:<16} {t['status']:<12} {str(t.get('pid') or '-'):<8} {t.get('tool_summary', t['command'])[:35]}")
+        return
+
+    if args.action == "spawn":
+        payload = {"command": args.command, "tool_summary": args.summary or args.command[:35]}
+        res = call_api("/gateway/api/tasks/spawn", method="POST", data=payload)
+        t = res.get("task", {})
+        print(f"✓ [Antigravity] Background task started: {t.get('id')} (PID: {t.get('pid')})")
+        print(f"  Summary: {t.get('tool_summary')}")
+        print(f"  Inspect: manage_task logs {t.get('id')}")
+        return
+
+    if args.action == "status":
+        res = call_api(f"/gateway/api/tasks/{args.task_id}")
+        t = res.get("task", {})
+        print(f"Task ID:   {t.get('id')}")
+        print(f"Status:    {t.get('status')}")
+        print(f"PID:       {t.get('pid')}")
+        print(f"Command:   {t.get('command')}")
+        print(f"Exit Code: {t.get('exit_code')}")
+        return
+
+    if args.action == "logs":
+        res = call_api(f"/gateway/api/tasks/{args.task_id}?tail={args.tail}")
+        logs = res.get("logs", "")
+        if not logs:
+            print("(No logs available for this task yet)")
+        else:
+            print(logs, end="")
+        return
+
+    if args.action == "send_input":
+        payload = {"input": args.input}
+        res = call_api(f"/gateway/api/tasks/{args.task_id}/input", method="POST", data=payload)
+        print(f"✓ Delivered input to {args.task_id}")
+        return
+
+    if args.action == "kill":
+        res = call_api(f"/gateway/api/tasks/{args.task_id}/kill", method="POST")
+        print(f"✓ Task {args.task_id} terminated.")
+        return
+
+
+if __name__ == "__main__":
+    main()

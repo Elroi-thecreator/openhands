@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import json
+import urllib.request
+from pathlib import Path
+
+# Try to find artifacts directory across host and sandbox container
+CANDIDATE_DIRS = [
+    Path("/workspace/artifacts"),
+    Path("/home/ubuntu/openhand/workspace/artifacts"),
+]
+ARTIFACTS_DIR = None
+for d in CANDIDATE_DIRS:
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        ARTIFACTS_DIR = d
+        break
+    except Exception:
+        continue
+if not ARTIFACTS_DIR:
+    ARTIFACTS_DIR = Path("artifacts")
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+
+GATEWAY_URLS = [
+    os.getenv("ANTIGRAVITY_GATEWAY_URL", "http://172.17.0.1:8080"),
+    "http://127.0.0.1:8080",
+    "http://host.docker.internal:8080",
+]
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Create or update an Antigravity artifact.")
+    parser.add_argument("filename", help="Artifact filename (e.g. architecture_plan.md)")
+    parser.add_argument("--title", "-t", default="", help="Artifact title")
+    parser.add_argument("--summary", "-s", default="", help="Detailed summary of the artifact")
+    parser.add_argument("--request-feedback", "-f", action="store_true", help="Request user feedback/approval ('Proceed' action button in UI)")
+    parser.add_argument("--content", "-c", default=None, help="Markdown content string (reads stdin or local file if omitted)")
+    args = parser.parse_args()
+
+    # Read content
+    if args.content is not None:
+        content = args.content
+    elif not sys.stdin.isatty():
+        content = sys.stdin.read()
+    else:
+        local_file = Path(args.filename)
+        if local_file.exists():
+            content = local_file.read_text(encoding="utf-8")
+        else:
+            print("Error: No content provided via --content, stdin pipe, or existing file.", file=sys.stderr)
+            sys.exit(1)
+
+    title = args.title
+    if not title:
+        for line in content.splitlines():
+            line = line.strip()
+            if line.startswith("# "):
+                title = line[2:].strip()
+                break
+        if not title:
+            title = Path(args.filename).stem.replace("_", " ").title()
+
+    summary = args.summary or f"Artifact specification for {title}"
+
+    # Build frontmatter if not present
+    if not content.startswith("---"):
+        frontmatter = f"""---
+title: "{title}"
+summary: "{summary}"
+user_facing: true
+request_feedback: {str(args.request_feedback).lower()}
+approved: false
+---
+
+"""
+        full_content = frontmatter + content
+    else:
+        full_content = content
+
+    safe_name = Path(args.filename).name
+    if not safe_name.endswith(".md"):
+        safe_name += ".md"
+
+    out_path = ARTIFACTS_DIR / safe_name
+    out_path.write_text(full_content, encoding="utf-8")
+
+    # Notify gateway
+    payload = {
+        "filename": safe_name,
+        "title": title,
+        "summary": summary,
+        "request_feedback": args.request_feedback,
+        "user_facing": True,
+        "content": full_content,
+    }
+    req_body = json.dumps(payload).encode("utf-8")
+
+    notified = False
+    for base in GATEWAY_URLS:
+        try:
+            req = urllib.request.Request(
+                f"{base}/gateway/api/artifacts",
+                data=req_body,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    notified = True
+                    break
+        except Exception:
+            continue
+
+    print(f"✓ [Antigravity] Artifact created: {out_path.name}")
+    print(f"  • Title:   {title}")
+    print(f"  • Summary: {summary}")
+    print(f"  • Action:  {'⚡ User Review Requested (Proceed Button Active in UI)' if args.request_feedback else 'Informational Document'}")
+    if not notified:
+        print("  (Note: File written locally; gateway API will sync on next directory scan)")
+
+
+if __name__ == "__main__":
+    main()

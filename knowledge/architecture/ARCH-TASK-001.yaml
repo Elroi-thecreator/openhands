@@ -1,0 +1,47 @@
+id: ARCH-TASK-001
+type: architecture_standard
+title: Antigravity Reactive Background Scheduling, Task Supervision, Progressive Skills & Subagent Mailbox Architecture
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - gateway/main.py
+  - workspace/bin/manage_task
+  - workspace/bin/schedule
+  - workspace/bin/subagent
+  - workspace/bin/skill
+  - workspace/AGENTS.md
+  - workspace/.agents/skills/
+  - workspace/.antigravity/scratch/
+
+rule:
+  "OpenHands operates with full Antigravity parity across reactive event-driven scheduling (zero polling overhead), background process supervision with interactive stdin delivery, progressive on-demand skill discovery, subagent coordination with inter-agent message boards, and isolated non-polluting scratchpad environments."
+
+do:
+  - "Run asynchronous background tasks through the Gateway Task Supervisor (`/gateway/api/tasks/spawn`), capturing real-time stdout/stderr into ring buffers without blocking agent turns."
+  - "Expose task stdin delivery (`/gateway/api/tasks/{id}/input`) and clean process termination (`/gateway/api/tasks/{id}/kill`)."
+  - "Provide non-blocking timer and cron scheduling (`/gateway/api/schedule`) that queues high-priority wakeup notifications when timers fire."
+  - "Implement progressive skill discovery via `workspace/bin/skill` that indexes lightweight metadata (`name`, `description`) from `.agents/skills/*/SKILL.md` without polluting context windows until full procedures are read on-demand."
+  - "Provide subagent orchestration (`/gateway/api/subagents`) and inter-agent mailbox messaging (`/gateway/api/messages`) to enable coordinator/worker task delegation."
+  - "Confine temporary analysis scripts and scratch files strictly to `/workspace/.antigravity/scratch/`, permanently ignored by git."
+
+dont:
+  - "Do not execute long-running services (e.g. servers or watchers) directly in blocking bash turns."
+  - "Do not poll task statuses in tight while-loops with sleep commands; rely on the Gateway reactive event engine."
+  - "Do not load full monolithic skill catalogs into prompt context unconditionally."
+  - "Do not save transient experimental scripts in the root git workspace."
+
+reason:
+  "Autonomous software engineering requires non-blocking multitasking, reactive wakeups, progressive documentation loading, and subagent delegation. Providing native CLI binaries (`manage_task`, `schedule`, `subagent`, `skill`) backed by async Gateway endpoints delivers complete Antigravity feature parity on OpenHands."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - ARCH-ARTIFACT-001
+  - PROD-ANTIGRAVITY-001
+  - DEV-TOOL-001

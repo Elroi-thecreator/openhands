@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+from pathlib import Path
+
+SKILL_DIRS = [
+    Path("/workspace/.agents/skills"),
+    Path("/home/ubuntu/openhand/workspace/.agents/skills"),
+    Path("/workspace/skills"),
+    Path("/home/ubuntu/openhand/skills"),
+]
+
+
+def get_target_skills_dir() -> Path:
+    candidates = [
+        Path("/workspace/.agents/skills"),
+        Path("/home/ubuntu/openhand/workspace/.agents/skills"),
+        Path(".agents/skills"),
+    ]
+    for c in candidates:
+        try:
+            c.mkdir(parents=True, exist_ok=True)
+            return c
+        except Exception:
+            continue
+    return Path(".agents/skills")
+
+
+def find_skills():
+    skills = {}
+    for base in SKILL_DIRS:
+        if not base.exists():
+            continue
+        for skill_md in base.glob("*/SKILL.md"):
+            skill_name = skill_md.parent.name
+            desc = "Specialized skill procedure."
+            try:
+                content = skill_md.read_text(encoding="utf-8", errors="ignore")
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        for line in parts[1].splitlines():
+                            if line.strip().startswith("description:"):
+                                desc = line.split("description:", 1)[1].strip()
+                                break
+            except Exception:
+                pass
+            skills[skill_name] = {"path": skill_md, "description": desc}
+    return skills
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Progressive Skill Discovery Tool (skill).")
+    subparsers = parser.add_subparsers(dest="action", help="Action")
+
+    # list
+    subparsers.add_parser("list", help="List all available skills with concise descriptions (Progressive Index)")
+
+    # read
+    p_read = subparsers.add_parser("read", help="Read full SKILL.md documentation for a skill")
+    p_read.add_argument("name", help="Skill name")
+
+    # create
+    p_create = subparsers.add_parser("create", help="Create a new skill template")
+    p_create.add_argument("name", help="Skill name")
+    p_create.add_argument("--description", "-d", required=True, help="Skill description for progressive index")
+
+    args = parser.parse_args()
+
+    skills = find_skills()
+
+    if not args.action or args.action == "list":
+        if not skills:
+            print("No custom skills discovered in .agents/skills/.")
+            print("Create one using: skill create <name> --description '...'")
+            return
+        print("Antigravity Progressive Skills Index:")
+        print(f"{'SKILL NAME':<24} {'DESCRIPTION'}")
+        print("-" * 75)
+        for name, meta in sorted(skills.items()):
+            print(f"{name:<24} {meta['description'][:50]}")
+        print("\nTip: Load full instructions on-demand with: skill read <name>")
+        return
+
+    if args.action == "read":
+        if args.name not in skills:
+            print(f"Skill '{args.name}' not found. Available: {', '.join(skills.keys())}", file=sys.stderr)
+            sys.exit(1)
+        skill_path = skills[args.name]["path"]
+        print(skill_path.read_text(encoding="utf-8", errors="ignore"))
+        return
+
+    if args.action == "create":
+        target_dir = get_target_skills_dir() / args.name
+        target_dir.mkdir(parents=True, exist_ok=True)
+        skill_md = target_dir / "SKILL.md"
+        content = f"""---
+name: {args.name}
+description: {args.description}
+---
+
+# {args.name.replace('-', ' ').title()}
+
+## Overview
+{args.description}
+
+## Instructions
+1. Step one...
+2. Step two...
+3. Step three...
+
+## Verification
+- Run tests to confirm output.
+"""
+        skill_md.write_text(content, encoding="utf-8")
+        print(f"✓ Created skill '{args.name}' at {skill_md}")
+        print("  It is now automatically indexed in progressive disclosure!")
+        return
+
+
+if __name__ == "__main__":
+    main()

@@ -29,14 +29,21 @@ _DETAILED_BASH_DESCRIPTION = """Execute a bash command in the terminal within a 
 * Directory verification: Before creating new directories or files, first verify the parent directory exists and is the correct location.
 * Directory management: Try to maintain working directory by using absolute paths and avoiding excessive use of `cd`.
 
+### Antigravity Error Recovery & Loop Prevention
+* STRICT ANTI-REPEAT RULE: If a command fails or returns a non-zero exit code, you MUST NEVER execute the identical command with the same arguments.
+* Diagnosis: Run `diagnose_error --file <path> --line <line>` or `diagnose_error --traceback "<error>"` to inspect the code context around the failure and verify syntax.
+* Long-running & Background Processes: Use `manage_task spawn --command "..." --summary "..."` to supervise background processes without blocking.
+* User Escalation: Use `escalate_error --error "..."` or `ask_question` if an architectural fork or external clarification is required.
+
 ### Output Handling
 * Output truncation: If the output exceeds a maximum length, it will be truncated before being returned.
 """
 
 _SHORT_BASH_DESCRIPTION = """Execute a bash command in the terminal.
-* Long running commands: For commands that may run indefinitely, it should be run in the background and the output should be redirected to a file, e.g. command = `python3 app.py > server.log 2>&1 &`. For commands that need to run for a specific duration, you can set the "timeout" argument to specify a hard timeout in seconds.
-* Interact with running process: If a bash command returns exit code `-1`, this means the process is not yet finished. By setting `is_input` to `true`, the assistant can interact with the running process and send empty `command` to retrieve any additional logs, or send additional text (set `command` to the text) to STDIN of the running process, or send command like `C-c` (Ctrl+C), `C-d` (Ctrl+D), `C-z` (Ctrl+Z) to interrupt the process.
-* One command at a time: You can only execute one bash command at a time. If you need to run multiple commands sequentially, you can use `&&` or `;` to chain them together."""
+* Long running commands: For commands that may run indefinitely, use `manage_task spawn --command "..."` or run in background.
+* Interact with running process: If a bash command returns exit code `-1`, this means the process is not yet finished. By setting `is_input` to `true`, the assistant can interact with the running process.
+* Antigravity Error Recovery: NEVER repeat a failing command. Run `diagnose_error` to inspect errors or `escalate_error` / `ask_question` for clarification.
+* One command at a time: You can only execute one bash command at a time."""
 
 
 def create_cmd_run_tool(

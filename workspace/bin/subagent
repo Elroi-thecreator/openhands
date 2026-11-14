@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import json
+import urllib.request
+import urllib.error
+
+GATEWAY_URLS = [
+    os.getenv("ANTIGRAVITY_GATEWAY_URL", "http://172.17.0.1:8080"),
+    "http://127.0.0.1:8080",
+    "http://host.docker.internal:8080",
+]
+
+
+def call_api(path: str, method: str = "GET", data: dict = None) -> dict:
+    req_body = json.dumps(data).encode("utf-8") if data else None
+    headers = {"Content-Type": "application/json"} if req_body else {}
+
+    for base in GATEWAY_URLS:
+        url = f"{base}{path}"
+        try:
+            req = urllib.request.Request(url, data=req_body, headers=headers, method=method)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode())
+        except Exception:
+            continue
+    raise RuntimeError(f"Could not connect to Antigravity Gateway API at {path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Subagent Orchestrator & Mailbox (subagent).")
+    subparsers = parser.add_subparsers(dest="action", help="Subagent action")
+
+    # invoke
+    p_inv = subparsers.add_parser("invoke", help="Invoke a delegated subagent")
+    p_inv.add_argument("--role", "-r", required=True, help="Job title / role (e.g. 'Codebase Researcher')")
+    p_inv.add_argument("--prompt", "-p", required=True, help="Actionable task assignment for the subagent")
+    p_inv.add_argument("--workspace", "-w", choices=["inherit", "share", "branch"], default="inherit", help="Workspace isolation mode")
+    p_inv.add_argument("--type", "-t", default="subagent", help="Type name of the subagent")
+
+    # list
+    p_list = subparsers.add_parser("list", help="List all active and past subagents")
+
+    # message
+    p_msg = subparsers.add_parser("message", help="Send a message to a subagent or coordinator")
+    p_msg.add_argument("--recipient", "-r", required=True, help="Recipient conversation ID")
+    p_msg.add_argument("--message", "-m", required=True, help="Content of message")
+    p_msg.add_argument("--sender", "-s", default="coordinator", help="Sender conversation ID")
+
+    # check_inbox
+    p_inbox = subparsers.add_parser("check_inbox", help="Check incoming agent messages")
+    p_inbox.add_argument("--recipient", "-r", default=None, help="Filter by recipient ID")
+
+    args = parser.parse_args()
+
+    if not args.action or args.action == "list":
+        res = call_api("/gateway/api/subagents")
+        subs = res.get("subagents", [])
+        if not subs:
+            print("No active subagents registered.")
+            return
+        print(f"{'CONVERSATION ID':<22} {'STATUS':<10} {'WORKSPACE':<10} {'ROLE'}")
+        print("-" * 65)
+        for s in subs:
+            print(f"{s['conversation_id']:<22} {s['status']:<10} {s['workspace_mode']:<10} {s['role']}")
+        return
+
+    if args.action == "invoke":
+        payload = {
+            "role": args.role,
+            "prompt": args.prompt,
+            "workspace": args.workspace,
+            "type_name": args.type,
+        }
+        res = call_api("/gateway/api/subagents", method="POST", data=payload)
+        s = res.get("subagent", {})
+        print(f"✓ [Antigravity] Subagent spawned successfully!")
+        print(f"  • Conversation ID: {s.get('conversation_id')}")
+        print(f"  • Role:            {s.get('role')}")
+        print(f"  • Workspace Mode:  {s.get('workspace_mode')}")
+        print(f"  • Workspace Dir:   {s.get('workspace_dir')}")
+        print(f"  (Communicate using: subagent message --recipient {s.get('conversation_id')} --message '...')")
+        return
+
+    if args.action == "message":
+        payload = {
+            "recipient": args.recipient,
+            "sender": args.sender,
+            "message": args.message,
+        }
+        res = call_api("/gateway/api/messages", method="POST", data=payload)
+        print(f"✓ [Antigravity] Message delivered to {args.recipient} (Msg ID: {res.get('message_id')})")
+        return
+
+    if args.action == "check_inbox":
+        path = f"/gateway/api/messages?recipient={args.recipient}" if args.recipient else "/gateway/api/messages"
+        res = call_api(path)
+        msgs = res.get("messages", [])
+        if not msgs:
+            print("Inbox is empty (no incoming messages).")
+            return
+        print(f"Incoming Messages ({len(msgs)}):")
+        for m in msgs:
+            print(f"  [{m.get('sender')} -> {m.get('recipient')}]: {m.get('message')}")
+        return
+
+
+if __name__ == "__main__":
+    main()

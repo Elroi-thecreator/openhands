@@ -1,16 +1,22 @@
-
 document.addEventListener('DOMContentLoaded', () => {
-    const taskForm = document.getElementById('task-form');
-    const taskInput = document.getElementById('task-input');
-    const prioritySelect = document.getElementById('priority-select');
-    const taskList = document.getElementById('task-list');
+    const taskInput = document.getElementById('taskInput');
+    const prioritySelector = document.getElementById('prioritySelector');
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    const taskList = document.getElementById('taskList');
     const filterBtns = document.querySelectorAll('.filter-btn');
+    const taskCount = document.getElementById('taskCount');
 
     let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
     let currentFilter = 'all';
 
     const saveTasks = () => {
         localStorage.setItem('tasks', JSON.stringify(tasks));
+        updateTaskCount();
+    };
+
+    const updateTaskCount = () => {
+        const activeTasks = tasks.filter(t => !t.completed).length;
+        taskCount.textContent = `${activeTasks} task${activeTasks !== 1 ? 's' : ''} remaining`;
     };
 
     const renderTasks = () => {
@@ -22,43 +28,43 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         });
 
-        filteredTasks.forEach((task, index) => {
+        filteredTasks.forEach(task => {
             const li = document.createElement('li');
             li.className = `task-item ${task.completed ? 'completed' : ''}`;
-            
+            li.dataset.id = task.id;
+
             li.innerHTML = `
                 <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
-                <span class="task-text">${task.text}</span>
-                <span class="priority-badge priority-${task.priority}">${task.priority}</span>
-                <button class="delete-btn">&times;</button>
+                <div class="task-content">
+                    <span class="task-text">${escapeHtml(task.text)}</span>
+                </div>
+                <span class="priority-tag p-${task.priority}">${task.priority}</span>
+                <button class="delete-btn" aria-label="Delete task">&times;</button>
             `;
 
-            const checkbox = li.querySelector('.task-checkbox');
-            checkbox.addEventListener('change', () => toggleTask(task.id));
-
-            const deleteBtn = li.querySelector('.delete-btn');
-            deleteBtn.addEventListener('click', () => deleteTask(task.id));
+            // Event Listeners
+            li.querySelector('.task-checkbox').addEventListener('change', () => toggleTask(task.id));
+            li.querySelector('.delete-btn').addEventListener('click', () => deleteTask(task.id));
 
             taskList.appendChild(li);
         });
     };
 
-    const addTask = (e) => {
-        e.preventDefault();
+    const addTask = () => {
         const text = taskInput.value.trim();
         if (!text) return;
 
         const newTask = {
             id: Date.now(),
             text,
-            priority: prioritySelect.value,
+            priority: prioritySelector.value,
             completed: false
         };
 
         tasks.push(newTask);
+        taskInput.value = '';
         saveTasks();
         renderTasks();
-        taskForm.reset();
     };
 
     const toggleTask = (id) => {
@@ -75,15 +81,31 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTasks();
     };
 
-    const setFilter = (e) => {
-        filterBtns.forEach(btn => btn.classList.remove('active'));
-        e.target.classList.add('active');
-        currentFilter = e.target.getAttribute('data-filter');
+    const setFilter = (filter) => {
+        currentFilter = filter;
+        filterBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
         renderTasks();
     };
 
-    taskForm.addEventListener('submit', addTask);
-    filterBtns.forEach(btn => btn.addEventListener('click', setFilter));
+    const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
 
+    // Event Listeners
+    addTaskBtn.addEventListener('click', addTask);
+    taskInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addTask();
+    });
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+    });
+
+    // Initial render
     renderTasks();
+    updateTaskCount();
 });

@@ -28,5 +28,8 @@ services:
       - /home/ubuntu/openhand/patches/browser.py:/app/openhands/agenthub/codeact_agent/tools/browser.py:ro
       - /home/ubuntu/openhand/patches/llm_based_edit.py:/app/openhands/agenthub/codeact_agent/tools/llm_based_edit.py:ro
       - /home/ubuntu/openhand/patches/fn_call_converter.py:/app/openhands/llm/fn_call_converter.py:ro
+      - /home/ubuntu/openhand/patches/stuck.py:/app/openhands/controller/stuck.py:ro
+      - /home/ubuntu/openhand/patches/agent_controller.py:/app/openhands/controller/agent_controller.py:ro
+      - /home/ubuntu/openhand/patches/action_execution_client.py:/app/openhands/runtime/impl/action_execution/action_execution_client.py:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -1,0 +1,51 @@
+id: ARCH-ERROR-001
+type: architecture_standard
+title: Antigravity Autonomous Error Interception, Loop Prevention & Diagnostic Recovery Architecture
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - gateway/main.py
+  - workspace/bin/diagnose_error
+  - workspace/bin/escalate_error
+  - workspace/bin/model_failover
+  - patches/bash.py
+  - patches/stuck.py
+  - patches/agent_controller.py
+  - patches/action_execution_client.py
+  - workspace/AGENTS.md
+  - workspace/.openhands/microagents/error_debugging.md
+
+rule:
+  "When an error, traceback, or timeout occurs mid-process, OpenHands operates with strict Antigravity resilience: detecting repeated failing commands via thought-invariant loop breakers (CmdRunAction command comparison), self-healing path errors (auto-creating missing directories on touch/creation), performing automated line-level code and syntax diagnostics (diagnose_error), providing asynchronous task control for process hangs (manage_task), injecting actionable user interventions on loops instead of terminating, escalating to interactive decision cards (escalate_error), and supporting instant model failover (model_failover) without terminating agent sessions."
+
+do:
+  - "Run `diagnose_error` to parse tracebacks, inspect lines around failures, verify syntax, and test import availability before modifying code."
+  - "Auto-heal path creation failures (missing parent directories) dynamically via `action_execution_client.py`."
+  - "Auto-resolve missing file paths in `FileEditAction` and `FileReadAction` by recursively scanning `/workspace` and selecting the newest modified match."
+  - "Detect repeated failing commands at 2 consecutive failures using thought-invariant comparison in `stuck.py`."
+  - "Inject corrective user interventions to unstick repetitive loops in `agent_controller.py`, dynamically resetting the stuck horizon in `stuck.py` rather than crashing the session."
+  - "Supervise long-running commands using `manage_task` to prevent hanging processes and deliver stdin inputs."
+  - "Escalate ambiguous errors to the user with `escalate_error` / `ask_question` with automated recommended timeout fallbacks."
+  - "Maintain local model failover capability to switch to Ollama Qwen 2.5 Coder (`/gateway/api/model-fallback`) when cloud API quotas are exhausted."
+  - "Provide a single-click auto-recovery endpoint (`/gateway/api/auto-recover`) to clear dead processes and unstick inference loops."
+
+dont:
+  - "Do not execute identical failing commands repeatedly, which triggers fatal `AgentStuckInLoopError` crashes."
+  - "Do not guess file lines or blind-edit code without inspecting context lines and verifying syntax."
+  - "Do not leave runaway inference processes or unmonitored background tasks consuming CPU."
+
+reason:
+  "Autonomous agent workflows often stall or crash due to repeated tool errors, hanging commands, or API rate limits. Embedding a structured error interception, line-level diagnosis, process control, and model failover pipeline gives OpenHands production-grade resilience matching Antigravity."
+
+related_items:
+  - ARCH-TASK-001
+  - ARCH-ARTIFACT-001
+  - DEV-TOOL-001
+  - PROD-LLM-001

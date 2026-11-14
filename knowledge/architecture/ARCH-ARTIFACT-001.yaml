@@ -1,0 +1,44 @@
+id: ARCH-ARTIFACT-001
+type: architecture_standard
+title: Antigravity Interactive Artifacts Canvas, Review Feedback & Decision Cards Architecture
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - gateway/main.py
+  - frontend_custom/assets/antigravity-shell.js
+  - frontend_custom/assets/antigravity.css
+  - workspace/bin/write_artifact
+  - workspace/bin/ask_question
+  - workspace/AGENTS.md
+  - workspace/.openhands/microagents/plan.md
+
+rule:
+  "OpenHands provides full Antigravity parity for interactive artifacts, human-in-the-loop decision cards, and execution review. The Gateway manages artifact lifecycles with frontmatter metadata (title, summary, request_feedback, approved), serves REST APIs for artifact management and non-blocking asynchronous decision polling (ask_question), while the UI dynamically injects an Antigravity Artifacts Drawer with executable 'Proceed' buttons and real-time floating decision prompts."
+
+do:
+  - "Maintain `/gateway/api/artifacts` for listing, fetching, saving, and approving artifacts."
+  - "Support YAML frontmatter metadata extraction (`title`, `summary`, `user_facing`, `request_feedback`, `approved`) with Markdown fallback."
+  - "Expose `/gateway/api/questions` and `/wait` using `asyncio.Event` to enable zero-overhead synchronous blocking for CLI agents without burning CPU."
+  - "Provide binary CLI utilities in `/workspace/bin/` (`write_artifact`, `ask_question`) that automatically discover the gateway on Docker bridge (`172.17.0.1:8080`) or localhost."
+  - "Render an obsidian dark glassmorphism Artifacts Drawer with tab navigation, markdown rendering, and an executable '⚡ Proceed with Plan' button that dispatches continuation prompts directly into the chat composer."
+  - "Render an interactive Decision Prompt Card in the browser UI when `ask_question` is triggered, allowing one-click selection of architecture options."
+
+dont:
+  - "Do not block the FastAPI event loop during question waiting; always use async event-driven signaling."
+  - "Do not allow `ask_question` to hang indefinitely if the user is away; enforce automated fallback to the recommended option on timeout."
+  - "Do not force users to write boilerplate JSON for artifacts; accept clean Markdown via pipe or file."
+
+reason:
+  "Autonomous code generation frequently halts or derails due to assumptions made without user input or lack of plan verification. The interactive artifacts engine and decision card protocol provide Antigravity-grade human-in-the-loop alignment directly within the OpenHands workspace."
+
+related_items:
+  - ARCH-GATEWAY-001
+  - PROD-ANTIGRAVITY-001
+  - DEV-TOOL-001

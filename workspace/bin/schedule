@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import json
+import urllib.request
+import urllib.error
+
+GATEWAY_URLS = [
+    os.getenv("ANTIGRAVITY_GATEWAY_URL", "http://172.17.0.1:8080"),
+    "http://127.0.0.1:8080",
+    "http://host.docker.internal:8080",
+]
+
+
+def call_api(path: str, method: str = "GET", data: dict = None) -> dict:
+    req_body = json.dumps(data).encode("utf-8") if data else None
+    headers = {"Content-Type": "application/json"} if req_body else {}
+
+    for base in GATEWAY_URLS:
+        url = f"{base}{path}"
+        try:
+            req = urllib.request.Request(url, data=req_body, headers=headers, method=method)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode())
+        except Exception:
+            continue
+    raise RuntimeError(f"Could not connect to Antigravity Gateway API at {path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Reactive Scheduler (schedule).")
+    parser.add_argument("--seconds", "-s", type=int, default=None, help="One-shot timer delay in seconds")
+    parser.add_argument("--cron", "-c", type=str, default=None, help="Standard 5-field cron expression")
+    parser.add_argument("--prompt", "-p", type=str, default=None, help="Prompt/Notification message sent on trigger")
+    parser.add_argument("--condition", default="never", help="Cancel early condition: 'never', 'any', or sender ID")
+    parser.add_argument("--list", "-l", action="store_true", help="List active schedules and notifications")
+    parser.add_argument("--cancel", type=str, default=None, help="Cancel schedule by job ID")
+    args = parser.parse_args()
+
+    if args.list:
+        res = call_api("/gateway/api/schedule")
+        jobs = res.get("schedules", [])
+        notifs = res.get("notifications", [])
+        print(f"{'JOB ID':<16} {'STATUS':<12} {'DURATION/CRON':<15} {'PROMPT'}")
+        print("-" * 70)
+        for j in jobs:
+            dur = f"{j.get('duration_seconds')}s" if j.get('duration_seconds') else (j.get('cron_expression') or "-")
+            print(f"{j['id']:<16} {j['status']:<12} {dur:<15} {j.get('prompt')[:30]}")
+        if notifs:
+            print(f"\nRecent Triggered Notifications ({len(notifs)}):")
+            for n in notifs[-5:]:
+                print(f"  • [{n.get('type')}] {n.get('prompt') or n.get('summary')}")
+        return
+
+    if args.cancel:
+        res = call_api(f"/gateway/api/schedule/{args.cancel}", method="DELETE")
+        print(f"✓ Schedule {args.cancel} cancelled.")
+        return
+
+    if not args.prompt:
+        parser.print_help()
+        sys.exit(1)
+
+    payload = {
+        "prompt": args.prompt,
+        "duration_seconds": args.seconds,
+        "cron_expression": args.cron,
+        "timer_condition": args.condition,
+    }
+    res = call_api("/gateway/api/schedule", method="POST", data=payload)
+    j = res.get("job", {})
+    dur_str = f"{args.seconds}s delay" if args.seconds else f"cron '{args.cron}'"
+    print(f"✓ [Antigravity] Reactive schedule registered: {j.get('id')}")
+    print(f"  • Timing: {dur_str}")
+    print(f"  • Prompt: {args.prompt}")
+    print(f"  (The agent can yield turn; system wakes up reactively when timer triggers)")
+
+
+if __name__ == "__main__":
+    main()

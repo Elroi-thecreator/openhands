@@ -7,6 +7,7 @@ import logging
 import os
 import subprocess
 import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.templating import Jinja2Templates
 import httpx
 import websockets
+import yaml
 
 # Load environment variables
 env_path = Path(__file__).resolve().parent / ".env"
@@ -72,6 +74,19 @@ def verify_session_token(token: Optional[str]) -> bool:
     expected_payload = f"{username}:{timestamp_str}"
     expected_sig = hmac.new(SECRET_KEY.encode(), expected_payload.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(signature, expected_sig) and (username == GATEWAY_USERNAME)
+
+
+def is_request_authorized(request: Request) -> bool:
+    token = request.cookies.get(COOKIE_NAME)
+    if verify_session_token(token):
+        return True
+    client_ip = request.client.host if request.client else ""
+    if client_ip in ["127.0.0.1", "::1"] or client_ip.startswith("172.17.") or client_ip.startswith("172.18."):
+        return True
+    query_token = request.query_params.get("token")
+    if verify_session_token(query_token):
+        return True
+    return False
 
 
 # Hop-by-hop headers that should not be forwarded
@@ -261,6 +276,10 @@ def get_live_status_data():
         "ollama_active": ollama_active,
         "ollama_cpu": ollama_cpu,
         "active_sandboxes": active_sandboxes,
+        "active_tasks": len([t for t in _TASKS_STORE.values() if t.get("status") == "running"]),
+        "active_subagents": len([s for s in _SUBAGENTS_STORE.values() if s.get("status") == "active"]),
+        "active_schedules": len([j for j in _SCHEDULED_JOBS.values() if j.get("status") == "active"]),
+        "recent_notifications": _NOTIFICATIONS_QUEUE[-5:],
         "recent_events": recent_events[::-1]
     }
     _STATUS_CACHE["cached_data"] = data
@@ -288,6 +307,58 @@ async def api_restart_ollama(request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@app.post("/gateway/api/auto-recover")
+async def api_auto_recover(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    recovered_items = []
+    try:
+        subprocess.run(["sudo", "systemctl", "restart", "ollama"], check=True)
+        recovered_items.append("Ollama local LLM daemon restarted")
+    except Exception as e:
+        recovered_items.append(f"Ollama restart: {e}")
+
+    for tid, t in list(_TASKS_STORE.items()):
+        if t.get("status") == "running" and (time.time() - t["created_at"] > 300):
+            proc = _TASK_PROCESSES.get(tid)
+            if proc:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            t["status"] = "killed"
+            t["finished_at"] = time.time()
+            recovered_items.append(f"Terminated hanging task {tid}")
+
+    logger.info(f"Antigravity Auto-Recover executed: {recovered_items}")
+    return {"status": "ok", "actions": recovered_items}
+
+
+@app.post("/gateway/api/model-fallback")
+async def api_model_fallback(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    target_model = data.get("model", "local")
+    settings_file = Path("/home/ubuntu/openhand/state/settings.json")
+    if not settings_file.exists():
+        return JSONResponse(status_code=404, content={"error": "settings.json not found"})
+    try:
+        settings = json.loads(settings_file.read_text(encoding="utf-8"))
+        if target_model == "local":
+            settings["llm_model"] = "ollama/qwen2.5-coder:1.5b"
+            settings["llm_base_url"] = "http://host.docker.internal:11434"
+            settings["llm_api_key"] = "ollama"
+        else:
+            settings["llm_model"] = "gemini/gemini-3-flash-preview"
+            settings["llm_base_url"] = None
+        settings_file.write_text(json.dumps(settings), encoding="utf-8")
+        logger.info(f"Antigravity Model Fallback: active model is now {settings['llm_model']}")
+        return {"status": "ok", "active_model": settings["llm_model"]}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @app.get("/gateway/status", response_class=HTMLResponse)
 @app.get("/status", response_class=HTMLResponse)
 async def status_dashboard(request: Request):
@@ -295,6 +366,544 @@ async def status_dashboard(request: Request):
     if not verify_session_token(token):
         return RedirectResponse(url="/gateway/login?next=/gateway/status", status_code=302)
     return templates.TemplateResponse(request=request, name="status.html", context={})
+
+
+# --- Antigravity Artifacts Engine ---
+ARTIFACTS_DIR = Path("/home/ubuntu/openhand/workspace/artifacts")
+ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def parse_artifact_file(file_path: Path) -> dict:
+    content = file_path.read_text(encoding="utf-8", errors="ignore")
+    stat = file_path.stat()
+    meta = {
+        "id": file_path.name,
+        "filename": file_path.name,
+        "title": file_path.stem.replace("_", " ").title(),
+        "summary": "",
+        "user_facing": True,
+        "request_feedback": False,
+        "approved": False,
+        "updated_at": int(stat.st_mtime),
+        "size": stat.st_size,
+    }
+    body = content
+    if content.startswith("---"):
+        parts = content.split("---", 2)
+        if len(parts) >= 3:
+            try:
+                fm = yaml.safe_load(parts[1])
+                if isinstance(fm, dict):
+                    meta.update({
+                        "title": fm.get("title", meta["title"]),
+                        "summary": fm.get("summary", ""),
+                        "user_facing": fm.get("user_facing", True),
+                        "request_feedback": fm.get("request_feedback", False),
+                        "approved": fm.get("approved", False),
+                    })
+                    body = parts[2].strip()
+            except Exception:
+                pass
+
+    if not meta["title"] or meta["title"] == file_path.stem.replace("_", " ").title():
+        for line in body.splitlines():
+            line = line.strip()
+            if line.startswith("# "):
+                meta["title"] = line[2:].strip()
+                break
+
+    sidecar_app = file_path.parent / f".{file_path.name}.approved"
+    if sidecar_app.exists():
+        meta["approved"] = True
+
+    return {
+        "metadata": meta,
+        "content": body,
+        "raw": content,
+    }
+
+
+@app.get("/gateway/api/artifacts")
+async def list_artifacts(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    items = []
+    for p in sorted(ARTIFACTS_DIR.glob("*.md"), key=lambda f: f.stat().st_mtime, reverse=True):
+        try:
+            parsed = parse_artifact_file(p)
+            items.append(parsed["metadata"])
+        except Exception as e:
+            logger.warning(f"Error parsing artifact {p}: {e}")
+    return {"artifacts": items, "count": len(items)}
+
+
+@app.get("/gateway/api/artifacts/{filename}")
+async def get_artifact(request: Request, filename: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    safe_name = Path(filename).name
+    p = ARTIFACTS_DIR / safe_name
+    if not p.exists() or not p.is_file():
+        return JSONResponse(status_code=404, content={"error": "Artifact not found"})
+    try:
+        return parse_artifact_file(p)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/gateway/api/artifacts")
+async def save_artifact(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    filename = Path(data.get("filename", f"artifact_{int(time.time())}.md")).name
+    title = data.get("title", "")
+    summary = data.get("summary", "")
+    user_facing = data.get("user_facing", True)
+    request_feedback = data.get("request_feedback", False)
+    content = data.get("content", "")
+
+    if not content.startswith("---"):
+        frontmatter = f"""---
+title: "{title or filename.replace('_', ' ').replace('.md', '').title()}"
+summary: "{summary}"
+user_facing: {str(user_facing).lower()}
+request_feedback: {str(request_feedback).lower()}
+approved: false
+---
+
+"""
+        full_content = frontmatter + content
+    else:
+        full_content = content
+
+    out_path = ARTIFACTS_DIR / filename
+    out_path.write_text(full_content, encoding="utf-8")
+    parsed = parse_artifact_file(out_path)
+    logger.info(f"Saved Antigravity artifact: {filename} (title='{parsed['metadata']['title']}', feedback={request_feedback})")
+    return {"status": "ok", "artifact": parsed["metadata"]}
+
+
+@app.post("/gateway/api/artifacts/{filename}/approve")
+async def approve_artifact(request: Request, filename: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    safe_name = Path(filename).name
+    p = ARTIFACTS_DIR / safe_name
+    if not p.exists():
+        return JSONResponse(status_code=404, content={"error": "Artifact not found"})
+    sidecar = p.parent / f".{safe_name}.approved"
+    sidecar.write_text(json.dumps({"approved_at": time.time(), "status": "approved"}), encoding="utf-8")
+    logger.info(f"Artifact {safe_name} approved by user.")
+    return {"status": "ok", "filename": safe_name, "approved": True}
+
+
+# --- Antigravity Structured Questions & Decision Cards Engine ---
+_QUESTIONS_STORE: dict[str, dict] = {}
+_QUESTIONS_EVENTS: dict[str, asyncio.Event] = {}
+
+
+@app.post("/gateway/api/questions")
+async def create_question(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    qid = str(uuid.uuid4())[:8]
+    question = {
+        "id": qid,
+        "question": data.get("question", ""),
+        "options": data.get("options", []),
+        "is_multi_select": data.get("is_multi_select", False),
+        "status": "pending",
+        "answer": None,
+        "created_at": time.time(),
+    }
+    _QUESTIONS_STORE[qid] = question
+    _QUESTIONS_EVENTS[qid] = asyncio.Event()
+    logger.info(f"Antigravity Question created [{qid}]: {question['question']} (options={question['options']})")
+    return {"question_id": qid, "status": "pending", "question": question}
+
+
+@app.get("/gateway/api/questions/pending")
+async def get_pending_question(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    now = time.time()
+    for qid in sorted(_QUESTIONS_STORE.keys(), key=lambda k: _QUESTIONS_STORE[k]["created_at"], reverse=True):
+        q = _QUESTIONS_STORE[qid]
+        if q["status"] == "pending" and (now - q["created_at"] < 300):
+            return {"pending": True, "question": q}
+    return {"pending": False, "question": None}
+
+
+@app.post("/gateway/api/questions/{qid}/answer")
+async def answer_question(request: Request, qid: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if qid not in _QUESTIONS_STORE:
+        return JSONResponse(status_code=404, content={"error": "Question not found"})
+    data = await request.json()
+    answer = data.get("answer")
+    _QUESTIONS_STORE[qid]["answer"] = answer
+    _QUESTIONS_STORE[qid]["status"] = "answered"
+    if qid in _QUESTIONS_EVENTS:
+        _QUESTIONS_EVENTS[qid].set()
+    logger.info(f"Antigravity Question answered [{qid}]: {answer}")
+    return {"status": "ok", "question_id": qid, "answer": answer}
+
+
+@app.get("/gateway/api/questions/{qid}/wait")
+async def wait_question(request: Request, qid: str, timeout: int = 120):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if qid not in _QUESTIONS_STORE:
+        return JSONResponse(status_code=404, content={"error": "Question not found"})
+    q = _QUESTIONS_STORE[qid]
+    if q["status"] == "answered":
+        return {"status": "answered", "answer": q["answer"]}
+
+    event = _QUESTIONS_EVENTS.get(qid)
+    if not event:
+        return {"status": "error", "message": "No event found for question"}
+
+    try:
+        await asyncio.wait_for(event.wait(), timeout=float(timeout))
+        return {"status": "answered", "answer": _QUESTIONS_STORE[qid]["answer"]}
+    except asyncio.TimeoutError:
+        _QUESTIONS_STORE[qid]["status"] = "timeout"
+        return {"status": "timeout", "answer": None}
+
+
+# --- Antigravity Reactive Background Task & Schedule Engine ---
+TASKS_LOG_DIR = Path("/home/ubuntu/openhand/state/tasks")
+TASKS_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+_TASKS_STORE: dict[str, dict] = {}
+_TASK_PROCESSES: dict[str, asyncio.subprocess.Process] = {}
+_TASK_LOGS: dict[str, list[str]] = {}
+
+_SCHEDULED_JOBS: dict[str, dict] = {}
+_SCHEDULE_TIMERS: dict[str, asyncio.Task] = {}
+_NOTIFICATIONS_QUEUE: list[dict] = []
+
+
+async def _run_monitored_subprocess(task_id: str, command: str, working_dir: str):
+    log_file = TASKS_LOG_DIR / f"{task_id}.log"
+    _TASK_LOGS[task_id] = []
+    
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            stdin=asyncio.subprocess.PIPE,
+            cwd=working_dir,
+        )
+        _TASK_PROCESSES[task_id] = proc
+        _TASKS_STORE[task_id]["pid"] = proc.pid
+
+        with open(log_file, "a", encoding="utf-8") as f:
+            while True:
+                line = await proc.stdout.readline()
+                if not line:
+                    break
+                decoded = line.decode("utf-8", errors="replace")
+                f.write(decoded)
+                f.flush()
+                _TASK_LOGS[task_id].append(decoded)
+                if len(_TASK_LOGS[task_id]) > 500:
+                    _TASK_LOGS[task_id].pop(0)
+
+        retcode = await proc.wait()
+        _TASKS_STORE[task_id]["status"] = "completed" if retcode == 0 else "failed"
+        _TASKS_STORE[task_id]["exit_code"] = retcode
+        _TASKS_STORE[task_id]["finished_at"] = time.time()
+        logger.info(f"Background Task {task_id} exited with code {retcode}")
+
+        # Post notification
+        _NOTIFICATIONS_QUEUE.append({
+            "id": f"notif-{uuid.uuid4().hex[:6]}",
+            "type": "task_completion",
+            "task_id": task_id,
+            "summary": _TASKS_STORE[task_id].get("tool_summary", command),
+            "status": _TASKS_STORE[task_id]["status"],
+            "timestamp": time.time(),
+        })
+    except Exception as e:
+        logger.error(f"Error running background task {task_id}: {e}")
+        _TASKS_STORE[task_id]["status"] = "error"
+        _TASKS_STORE[task_id]["error"] = str(e)
+        _TASKS_STORE[task_id]["finished_at"] = time.time()
+    finally:
+        _TASK_PROCESSES.pop(task_id, None)
+
+
+@app.post("/gateway/api/tasks/spawn")
+async def spawn_background_task(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    command = data.get("command", "")
+    summary = data.get("tool_summary", command[:40])
+    working_dir = data.get("working_dir", "/home/ubuntu/openhand/workspace")
+
+    if not command:
+        return JSONResponse(status_code=400, content={"error": "Command is required"})
+
+    task_id = f"task-{uuid.uuid4().hex[:8]}"
+    _TASKS_STORE[task_id] = {
+        "id": task_id,
+        "command": command,
+        "tool_summary": summary,
+        "working_dir": working_dir,
+        "status": "running",
+        "pid": None,
+        "exit_code": None,
+        "created_at": time.time(),
+        "finished_at": None,
+    }
+
+    asyncio.create_task(_run_monitored_subprocess(task_id, command, working_dir))
+    logger.info(f"Spawned Background Task: {task_id} -> {summary}")
+    return {"task_id": task_id, "status": "running", "task": _TASKS_STORE[task_id]}
+
+
+@app.get("/gateway/api/tasks")
+async def list_background_tasks(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    tasks_list = sorted(_TASKS_STORE.values(), key=lambda t: t["created_at"], reverse=True)
+    return {"tasks": tasks_list, "count": len(tasks_list)}
+
+
+@app.get("/gateway/api/tasks/{task_id}")
+async def get_background_task(request: Request, task_id: str, tail: int = 50):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if task_id not in _TASKS_STORE:
+        return JSONResponse(status_code=404, content={"error": "Task not found"})
+
+    logs = _TASK_LOGS.get(task_id, [])[-tail:]
+    if not logs:
+        log_file = TASKS_LOG_DIR / f"{task_id}.log"
+        if log_file.exists():
+            try:
+                lines = log_file.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+                logs = lines[-tail:]
+            except Exception:
+                pass
+
+    return {
+        "task": _TASKS_STORE[task_id],
+        "logs": "".join(logs),
+        "recent_lines": [l.strip() for l in logs[-15:]],
+    }
+
+
+@app.post("/gateway/api/tasks/{task_id}/input")
+async def send_task_input(request: Request, task_id: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if task_id not in _TASK_PROCESSES:
+        return JSONResponse(status_code=404, content={"error": "Active task process not found"})
+
+    data = await request.json()
+    input_text = data.get("input", "")
+    proc = _TASK_PROCESSES[task_id]
+
+    try:
+        if proc.stdin and not proc.stdin.is_closing():
+            proc.stdin.write(input_text.encode("utf-8"))
+            await proc.stdin.drain()
+            return {"status": "ok", "delivered_bytes": len(input_text)}
+        return JSONResponse(status_code=400, content={"error": "Process stdin not available"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/gateway/api/tasks/{task_id}/kill")
+async def kill_background_task(request: Request, task_id: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if task_id not in _TASKS_STORE:
+        return JSONResponse(status_code=404, content={"error": "Task not found"})
+
+    proc = _TASK_PROCESSES.get(task_id)
+    if proc:
+        try:
+            proc.terminate()
+            await asyncio.sleep(0.5)
+            if proc.returncode is None:
+                proc.kill()
+        except Exception:
+            pass
+
+    _TASKS_STORE[task_id]["status"] = "killed"
+    _TASKS_STORE[task_id]["finished_at"] = time.time()
+    return {"status": "ok", "task_id": task_id, "state": "killed"}
+
+
+# --- Antigravity Reactive Scheduler ---
+async def _schedule_timer_worker(job_id: str, duration: int, prompt: str):
+    try:
+        await asyncio.sleep(duration)
+        if job_id in _SCHEDULED_JOBS:
+            _SCHEDULED_JOBS[job_id]["status"] = "triggered"
+            _SCHEDULED_JOBS[job_id]["triggered_at"] = time.time()
+            logger.info(f"Timer {job_id} fired: '{prompt}'")
+            _NOTIFICATIONS_QUEUE.append({
+                "id": f"notif-{uuid.uuid4().hex[:6]}",
+                "type": "timer_trigger",
+                "job_id": job_id,
+                "prompt": prompt,
+                "timestamp": time.time(),
+            })
+    except asyncio.CancelledError:
+        if job_id in _SCHEDULED_JOBS:
+            _SCHEDULED_JOBS[job_id]["status"] = "cancelled"
+    finally:
+        _SCHEDULE_TIMERS.pop(job_id, None)
+
+
+@app.post("/gateway/api/schedule")
+async def register_schedule(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    prompt = data.get("prompt", "")
+    duration = data.get("duration_seconds")
+    cron_expr = data.get("cron_expression")
+    timer_condition = data.get("timer_condition", "never")
+
+    if not prompt:
+        return JSONResponse(status_code=400, content={"error": "Prompt is required"})
+
+    job_id = f"job-{uuid.uuid4().hex[:8]}"
+    _SCHEDULED_JOBS[job_id] = {
+        "id": job_id,
+        "prompt": prompt,
+        "duration_seconds": duration,
+        "cron_expression": cron_expr,
+        "timer_condition": timer_condition,
+        "status": "active",
+        "created_at": time.time(),
+        "triggered_at": None,
+    }
+
+    if duration and duration > 0:
+        task = asyncio.create_task(_schedule_timer_worker(job_id, duration, prompt))
+        _SCHEDULE_TIMERS[job_id] = task
+
+    logger.info(f"Registered Antigravity Schedule [{job_id}]: {prompt} (duration={duration}s)")
+    return {"schedule_id": job_id, "status": "active", "job": _SCHEDULED_JOBS[job_id]}
+
+
+@app.get("/gateway/api/schedule")
+async def list_schedules(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    jobs = sorted(_SCHEDULED_JOBS.values(), key=lambda j: j["created_at"], reverse=True)
+    return {"schedules": jobs, "notifications": _NOTIFICATIONS_QUEUE[-20:]}
+
+
+@app.delete("/gateway/api/schedule/{job_id}")
+async def cancel_schedule(request: Request, job_id: str):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if job_id not in _SCHEDULED_JOBS:
+        return JSONResponse(status_code=404, content={"error": "Schedule not found"})
+
+    timer = _SCHEDULE_TIMERS.get(job_id)
+    if timer:
+        timer.cancel()
+
+    _SCHEDULED_JOBS[job_id]["status"] = "cancelled"
+    return {"status": "ok", "job_id": job_id, "state": "cancelled"}
+
+
+# --- Antigravity Subagents & Inter-Agent Mailbox Engine ---
+_SUBAGENTS_STORE: dict[str, dict] = {}
+_AGENT_MESSAGES: list[dict] = []
+
+
+@app.post("/gateway/api/subagents")
+async def invoke_subagent(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    role = data.get("role", "General Subagent")
+    type_name = data.get("type_name", "subagent")
+    prompt = data.get("prompt", "")
+    workspace_mode = data.get("workspace", "inherit")
+    model = data.get("model", "inherit")
+
+    cid = f"subagent-{uuid.uuid4().hex[:8]}"
+    sub_dir = Path("/home/ubuntu/openhand/workspace")
+    if workspace_mode in ["branch", "share"]:
+        sub_dir = Path(f"/home/ubuntu/openhand/workspace/.subagents/{cid}")
+        sub_dir.mkdir(parents=True, exist_ok=True)
+
+    subagent = {
+        "conversation_id": cid,
+        "type_name": type_name,
+        "role": role,
+        "prompt": prompt,
+        "workspace_mode": workspace_mode,
+        "workspace_dir": str(sub_dir),
+        "model": model,
+        "status": "active",
+        "created_at": time.time(),
+        "finished_at": None,
+    }
+    _SUBAGENTS_STORE[cid] = subagent
+    logger.info(f"Invoked Antigravity Subagent: {cid} (Role: '{role}', Mode: {workspace_mode})")
+    return {"conversation_id": cid, "status": "active", "subagent": subagent}
+
+
+@app.get("/gateway/api/subagents")
+async def list_subagents(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    subs = sorted(_SUBAGENTS_STORE.values(), key=lambda s: s["created_at"], reverse=True)
+    return {"subagents": subs, "count": len(subs)}
+
+
+@app.post("/gateway/api/messages")
+async def send_agent_message(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    data = await request.json()
+    recipient = data.get("recipient", "")
+    sender = data.get("sender", "coordinator")
+    msg_content = data.get("message", "")
+
+    if not recipient or not msg_content:
+        return JSONResponse(status_code=400, content={"error": "Recipient and message are required"})
+
+    msg_id = f"msg-{uuid.uuid4().hex[:8]}"
+    msg_obj = {
+        "id": msg_id,
+        "recipient": recipient,
+        "sender": sender,
+        "message": msg_content,
+        "timestamp": time.time(),
+        "read": False,
+    }
+    _AGENT_MESSAGES.append(msg_obj)
+    logger.info(f"Agent Message from {sender} -> {recipient}: {msg_content[:40]}...")
+    return {"status": "delivered", "message_id": msg_id, "message": msg_obj}
+
+
+@app.get("/gateway/api/messages")
+async def get_agent_messages(request: Request, recipient: Optional[str] = None, unread_only: bool = False):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    filtered = _AGENT_MESSAGES
+    if recipient:
+        filtered = [m for m in filtered if m["recipient"] == recipient]
+    if unread_only:
+        filtered = [m for m in filtered if not m["read"]]
+    return {"messages": filtered, "count": len(filtered)}
 
 
 # --- WebSocket Proxy ---
@@ -538,7 +1147,10 @@ async def http_proxy(request: Request, full_path: str):
             dot.style.background = '#8b5cf6';
             txt.textContent = d.last_action || 'Idle';
           }
-          cpu.textContent = 'RAM: ' + (d.mem_avail_mb / 1024).toFixed(1) + 'G';
+          let extra = '';
+          if (d.active_tasks > 0) extra += ' • ' + d.active_tasks + ' Task' + (d.active_tasks > 1 ? 's' : '');
+          if (d.active_subagents > 0) extra += ' • ' + d.active_subagents + ' Sub';
+          cpu.textContent = 'RAM: ' + (d.mem_avail_mb / 1024).toFixed(1) + 'G' + extra;
         }
       } catch (e) {}
     }

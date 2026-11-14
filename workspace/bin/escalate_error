@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+import sys
+import os
+import argparse
+import subprocess
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Human Escalation Helper.")
+    parser.add_argument("--error", "-e", required=True, help="Error message summary")
+    parser.add_argument("--context", "-c", default="", help="Context / step where error occurred")
+    args = parser.parse_args()
+
+    ctx = f" during {args.context}" if args.context else ""
+    prompt = f"Critical error encountered{ctx}: {args.error}. How should Antigravity proceed?"
+    options = "(Recommended) Attempt alternative approach, Inspect full diagnostic logs, Skip this step"
+
+    ask_bin = Path("/workspace/bin/ask_question") if Path("/workspace/bin/ask_question").exists() else Path("/home/ubuntu/openhand/workspace/bin/ask_question")
+    
+    cmd = [
+        sys.executable,
+        str(ask_bin),
+        "--question", prompt,
+        "--options", options,
+        "--timeout", "120"
+    ]
+    
+    proc = subprocess.run(cmd, text=True)
+    sys.exit(proc.returncode)
+
+if __name__ == "__main__":
+    from pathlib import Path
+    main()

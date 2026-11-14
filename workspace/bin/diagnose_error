@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+import sys
+import os
+import re
+import shutil
+import argparse
+import subprocess
+from pathlib import Path
+
+# Workspace candidates
+WORKSPACE_DIRS = [
+    Path("/workspace"),
+    Path("/home/ubuntu/openhand/workspace"),
+    Path("."),
+]
+
+
+def find_file(filepath: str) -> Path | None:
+    raw = Path(filepath)
+    if raw.is_absolute() and raw.exists():
+        return raw
+    for base in WORKSPACE_DIRS:
+        cand = (base / filepath).resolve()
+        if cand.exists():
+            return cand
+    if raw.exists():
+        return raw.resolve()
+    return None
+
+
+def parse_traceback(tb_text: str):
+    """Extracts files, line numbers, and error messages from python/js tracebacks."""
+    results = []
+    # Python traceback pattern: File "...", line X, in ...
+    py_pattern = re.compile(r'File "([^"]+)", line (\d+)(?:, in (\w+))?')
+    # Node/JS pattern: at ... (path:line:col) or at path:line:col
+    js_pattern = re.compile(r'at (?:.*?\(|)(/?[^:()]+):(\d+):(\d+)\)?')
+
+    lines = tb_text.splitlines()
+    error_msg = ""
+    for line in reversed(lines):
+        line = line.strip()
+        if line and any(err in line for err in ["Error", "Exception", "Fault", "AssertionError", "SyntaxError"]):
+            error_msg = line
+            break
+
+    for line in lines:
+        m = py_pattern.search(line)
+        if m:
+            results.append({
+                "file": m.group(1),
+                "line": int(m.group(2)),
+                "func": m.group(3) or "module",
+                "error": error_msg,
+            })
+        else:
+            m_js = js_pattern.search(line)
+            if m_js:
+                results.append({
+                    "file": m_js.group(1),
+                    "line": int(m_js.group(2)),
+                    "func": "js",
+                    "error": error_msg,
+                })
+    return results
+
+
+def show_code_context(file_path: Path, target_line: int, window: int = 5):
+    try:
+        lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception as e:
+        print(f"  [!] Could not read file: {e}")
+        return
+
+    total = len(lines)
+    start = max(1, target_line - window)
+    end = min(total, target_line + window)
+
+    print(f"\n  --- Context around line {target_line} in {file_path.name} ---")
+    for idx in range(start, end + 1):
+        content = lines[idx - 1]
+        marker = "-->" if idx == target_line else "   "
+        print(f"  {marker} {idx:4d} | {content}")
+    print("  " + "-" * 55)
+
+
+def check_syntax(file_path: Path):
+    ext = file_path.suffix.lower()
+    if ext == ".py":
+        res = subprocess.run([sys.executable, "-m", "py_compile", str(file_path)], capture_output=True, text=True)
+        if res.returncode == 0:
+            print("  ✓ Python Syntax: Valid (py_compile passed)")
+        else:
+            print(f"  ✗ Python Syntax ERROR:\n    {res.stderr.strip()}")
+    elif ext in [".js", ".mjs", ".ts"]:
+        node_bin = shutil.which("node")
+        if node_bin:
+            res = subprocess.run([node_bin, "-c", str(file_path)], capture_output=True, text=True)
+            if res.returncode == 0:
+                print("  ✓ JS/Node Syntax: Valid (node -c passed)")
+            else:
+                print(f"  ✗ JS Syntax ERROR:\n    {res.stderr.strip()}")
+        else:
+            print("  ℹ Node.js not installed on host PATH; skipping node -c check")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Antigravity Autonomous Error Diagnosis Tool.")
+    parser.add_argument("--traceback", "-t", default="", help="Error traceback string (or pipe via stdin)")
+    parser.add_argument("--file", "-f", default="", help="Offending source file to inspect")
+    parser.add_argument("--line", "-l", type=int, default=1, help="Offending line number")
+    parser.add_argument("--check-import", "-i", default="", help="Test importing a python module in current environment")
+    parser.add_argument("--check-port", "-p", type=int, default=None, help="Check if a TCP port is in use")
+    args = parser.parse_args()
+
+    # Read traceback from stdin if piped
+    tb = args.traceback
+    if not tb and not sys.stdin.isatty():
+        tb = sys.stdin.read().strip()
+
+    print("=======================================================")
+    print("🔍 ANTIGRAVITY AUTONOMOUS ERROR DIAGNOSIS REPORT")
+    print("=======================================================")
+
+    # 1. Port Check
+    if args.check_port:
+        port = args.check_port
+        res = subprocess.run(["ss", "-tulpn"], capture_output=True, text=True)
+        in_use = f":{port} " in res.stdout
+        print(f"\n[Port Inspection: {port}]")
+        if in_use:
+            print(f"  ✗ Port {port} is ALREADY IN USE by another process.")
+            for line in res.stdout.splitlines():
+                if f":{port} " in line:
+                    print(f"    {line.strip()}")
+            print(f"  💡 Suggestion: Use a different port or kill the process using port {port}.")
+        else:
+            print(f"  ✓ Port {port} is free and available.")
+
+    # 2. Import Check
+    if args.check_import:
+        mod = args.check_import
+        res = subprocess.run([sys.executable, "-c", f"import {mod}; print({mod}.__name__)"], capture_output=True, text=True)
+        print(f"\n[Module Import Check: '{mod}']")
+        if res.returncode == 0:
+            print(f"  ✓ Module '{mod}' is successfully installed and importable.")
+        else:
+            print(f"  ✗ Module '{mod}' FAILED to import:\n    {res.stderr.strip()}")
+            print(f"  💡 Suggestion: Run 'pip install {mod}' to install the missing package.")
+
+    # 3. Traceback Inspection
+    target_files = []
+    if tb:
+        parsed = parse_traceback(tb)
+        print(f"\n[Traceback Analysis]")
+        if parsed:
+            latest = parsed[-1]
+            print(f"  • Exception: {latest.get('error') or 'Unspecified Error'}")
+            print(f"  • Culprit:   {latest['file']} at line {latest['line']} ({latest.get('func')})")
+            target_files.append((latest['file'], latest['line']))
+        else:
+            print("  Could not parse stack frames automatically. Raw error preview:")
+            for l in tb.splitlines()[-5:]:
+                print(f"    {l}")
+
+    # 4. Direct File & Line Inspection
+    if args.file:
+        target_files.append((args.file, args.line))
+
+    for fpath_str, line_no in target_files:
+        fpath = find_file(fpath_str)
+        print(f"\n[File Diagnosis: {fpath_str}]")
+        if not fpath:
+            print(f"  ✗ File NOT FOUND: {fpath_str}")
+            print("  💡 Suggestion: Check if the path is relative to /workspace or if the file was deleted.")
+            continue
+
+        print(f"  • Resolved Path: {fpath}")
+        print(f"  • Permissions:   Read={'yes' if os.access(fpath, os.R_OK) else 'no'}, Write={'yes' if os.access(fpath, os.W_OK) else 'no'}")
+        show_code_context(fpath, line_no)
+        check_syntax(fpath)
+
+    print("\n=======================================================")
+    print("💡 Antigravity Action Protocol:")
+    print("  1. NEVER repeat the failing command with identical parameters.")
+    print("  2. Apply targeted edit using str_replace_editor or python script.")
+    print("  3. If external choice/direction is needed, run: 'escalate_error'")
+    print("=======================================================")
+
+
+if __name__ == "__main__":
+    main()

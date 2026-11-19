@@ -346,22 +346,44 @@ class ActionExecutionClient(Runtime):
         obs = self.send_action_for_execution(action)
         if isinstance(obs, CmdOutputObservation) and obs.exit_code != 0:
             content = obs.content or ''
-            # Antigravity Self-Healing: Auto-create missing directories for touch/creation commands
-            if ('cannot touch' in content or 'No such file or directory' in content) and 'touch ' in action.command:
+            # Antigravity Self-Healing: Auto-create missing directories for touch/creation/redirection commands
+            if ('cannot touch' in content or 'No such file or directory' in content or 'cannot create' in content):
                 import re
-                targets = re.findall(r"cannot touch ['\"]?([^'\":\n]+)['\"]?: No such file or directory", content)
-                missing_dirs = {os.path.dirname(t) for t in targets if os.path.dirname(t)}
+                targets = re.findall(r"(?:cannot touch|cannot create|No such file or directory:?)\s*['\"]?([^'\":\n]+)['\"]?", content)
+                missing_dirs = {os.path.dirname(t.strip()) for t in targets if os.path.dirname(t.strip())}
+
+                # Also inspect action.command for touch or redirection arguments with subdirectories
+                if not missing_dirs and ('touch ' in action.command or '>' in action.command):
+                    touch_groups = re.findall(r"(?:touch|cat\s*<<\s*['\"]?[A-Za-z0-9_-]+['\"]?\s*>\s*|>)\s+([^&;\n]+)", action.command)
+                    for group in touch_groups:
+                        for token in group.split():
+                            clean_t = token.strip('\'"')
+                            if '/' in clean_t and not clean_t.startswith('-'):
+                                parent_d = os.path.dirname(clean_t)
+                                if parent_d:
+                                    missing_dirs.add(parent_d)
+
                 if missing_dirs:
                     self.log('info', f'[Antigravity Self-Healing] Auto-creating missing directories: {missing_dirs}')
                     dirs_str = ' '.join(f'"{d}"' for d in missing_dirs)
-                    mkdir_action = CmdRunAction(command=f'mkdir -p {dirs_str}', hidden=True)
+
+                    # CRITICAL FIX: Detect any 'cd <target_dir>' in the command to ensure mkdir runs in the target directory
+                    cd_matches = re.findall(r"(?:^|&&|;)\s*cd\s+([^\s;&]+)", action.command)
+                    prefix = ""
+                    if cd_matches:
+                        last_cd = cd_matches[-1].strip('\'"')
+                        prefix = f"cd {last_cd} && "
+
+                    mkdir_cmd = f"{prefix}mkdir -p {dirs_str}"
+                    mkdir_action = CmdRunAction(command=mkdir_cmd, hidden=True)
                     self.send_action_for_execution(mkdir_action)
+
                     # Retry the original command
                     retry_obs = self.send_action_for_execution(action)
                     if isinstance(retry_obs, CmdOutputObservation) and retry_obs.exit_code == 0:
                         retry_obs.content = (
-                            f'[Antigravity Self-Healing]: Missing parent directory automatically resolved ({dirs_str}).\n'
-                            + retry_obs.content
+                            f'[Antigravity Self-Healing]: Missing parent directories automatically resolved ({dirs_str}).\n'
+                            + (retry_obs.content or '')
                         )
                         return retry_obs
                     obs = retry_obs

@@ -3,7 +3,7 @@ type: architecture_standard
 title: Antigravity Autonomous Error Interception, Loop Prevention & Diagnostic Recovery Architecture
 domain: architecture
 status: approved
-version: 1.0.0
+version: 1.1.0
 authority:
   level: official
   confidence: high
@@ -19,15 +19,19 @@ applies_to:
   - patches/stuck.py
   - patches/agent_controller.py
   - patches/action_execution_client.py
+  - patches/conversation_service.py
   - workspace/AGENTS.md
   - workspace/.openhands/microagents/error_debugging.md
 
 rule:
-  "When an error, traceback, or timeout occurs mid-process, OpenHands operates with strict Antigravity resilience: detecting repeated failing commands via thought-invariant loop breakers (CmdRunAction command comparison), self-healing path errors (auto-creating missing directories on touch/creation), performing automated line-level code and syntax diagnostics (diagnose_error), providing asynchronous task control for process hangs (manage_task), injecting actionable user interventions on loops instead of terminating, escalating to interactive decision cards (escalate_error), and supporting instant model failover (model_failover) without terminating agent sessions."
+  "When an error, traceback, or timeout occurs mid-process, OpenHands operates with strict Antigravity resilience: detecting repeated failing commands via thought-invariant loop breakers (CmdRunAction command comparison), self-healing path errors (auto-creating missing parent directories for touch/creation/redirection across compound commands), pre-emptively rewriting repetitive failing commands in agent_controller, executing autonomous directory/file recovery instead of crashing with AgentStuckInLoopError, exempting local/Ollama LLM endpoints from bogus API key requirements in conversation_service, performing automated line-level code and syntax diagnostics (diagnose_error), providing asynchronous task control for process hangs (manage_task), and escalating to interactive decision cards (escalate_error)."
 
 do:
   - "Run `diagnose_error` to parse tracebacks, inspect lines around failures, verify syntax, and test import availability before modifying code."
-  - "Auto-heal path creation failures (missing parent directories) dynamically via `action_execution_client.py`."
+  - "Auto-heal path creation failures (missing parent directories) dynamically via `action_execution_client.py`, respecting preceding `cd <target_dir>` in compound commands."
+  - "Intercept identical immediate command repetitions in `agent_controller.py` and rewrite them with auto-created parent directories before dispatch."
+  - "Perform autonomous environment recovery and continue agent execution when stuck thresholds are reached rather than terminating with `AgentStuckInLoopError`."
+  - "Exempt Ollama and local LLM endpoints from mandatory API keys in `conversation_service.py`, auto-populating dummy keys to prevent `LLMAuthenticationError`."
   - "Auto-resolve missing file paths in `FileEditAction` and `FileReadAction` by recursively scanning `/workspace` and selecting the newest modified match."
   - "Detect repeated failing commands at 2 consecutive failures using thought-invariant comparison in `stuck.py`."
   - "Inject corrective user interventions to unstick repetitive loops in `agent_controller.py`, dynamically resetting the stuck horizon in `stuck.py` rather than crashing the session."

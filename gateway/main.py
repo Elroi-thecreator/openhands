@@ -334,6 +334,36 @@ async def api_auto_recover(request: Request):
     return {"status": "ok", "actions": recovered_items}
 
 
+@app.get("/gateway/api/mcp")
+async def api_get_mcp(request: Request):
+    if not is_request_authorized(request):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    settings_file = Path("/home/ubuntu/openhand/state/settings.json")
+    if not settings_file.exists():
+        return {"status": "ok", "servers": []}
+    try:
+        settings = json.loads(settings_file.read_text(encoding="utf-8"))
+        mcp_cfg = settings.get("mcp_config", {})
+        stdio_servers = mcp_cfg.get("stdio_servers", [])
+        servers_info = []
+        for s in stdio_servers:
+            servers_info.append({
+                "name": s.get("name"),
+                "command": s.get("command"),
+                "args": s.get("args", []),
+                "type": "stdio",
+                "status": "ready"
+            })
+        return {
+            "status": "ok",
+            "count": len(servers_info),
+            "servers": servers_info,
+            "fastmcp_proxy": True
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 @app.post("/gateway/api/model-fallback")
 async def api_model_fallback(request: Request):
     if not is_request_authorized(request):
@@ -350,7 +380,7 @@ async def api_model_fallback(request: Request):
             settings["llm_base_url"] = "http://host.docker.internal:11434"
             settings["llm_api_key"] = "ollama"
         else:
-            settings["llm_model"] = "gemini/gemini-3-flash-preview"
+            settings["llm_model"] = "gemini/gemini-2.0-flash"
             settings["llm_base_url"] = None
         settings_file.write_text(json.dumps(settings), encoding="utf-8")
         logger.info(f"Antigravity Model Fallback: active model is now {settings['llm_model']}")

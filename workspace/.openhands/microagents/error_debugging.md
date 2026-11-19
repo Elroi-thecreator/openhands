@@ -17,9 +17,11 @@ triggers:
 
 When encountering any error, non-zero exit code, or failure:
 
-## 1. Strictly Avoid Loop Repetition
+## 1. Strictly Avoid Loop Repetition & Learn from Errors
 - NEVER execute the exact same failing command twice with identical arguments.
-- Repeating a failing action causes `AgentStuckInLoopError` and terminates the session.
+- If a command fails, inspect the error output (`obs.content`), change your arguments, and adapt your process.
+- When creating files in nested paths (e.g. `templates/index.html` or `static/css/styles.css`), ALWAYS ensure parent directories are created first with `mkdir -p <dir>` before executing `touch` or writing files.
+- Repeating a failing action causes agent looping. Always adapt based on the error output.
 
 ## 2. Run Autonomous Diagnosis (`diagnose_error`)
 - Instead of manually guessing lines or blind editing, invoke the Antigravity diagnostic engine:

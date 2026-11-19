@@ -1,0 +1,46 @@
+id: ARCH-MCP-001
+type: architecture_standard
+title: Model Context Protocol (MCP) Standardized Multi-Server Integration & Antigravity FastMCP Bridge
+domain: architecture
+status: approved
+version: 1.0.0
+authority:
+  level: official
+  confidence: high
+owner:
+  team: ai_engineering
+
+applies_to:
+  - state/settings.json
+  - workspace/bin/antigravity_mcp.py
+  - workspace/.openhands/microagents/mcp_tools.md
+  - workspace/AGENTS.md
+  - gateway/main.py
+  - gateway/templates/status.html
+
+rule:
+  "Model Context Protocol (MCP) stdio and SSE servers must be leveraged across all agent workflows where structured tools deliver superior determinism, authenticated access, or semantic abstraction over raw bash scripts or curl one-liners. Core Antigravity parity capabilities (artifacts, decisions, tasks, diagnosis, scheduling) are exposed as native MCP tools via FastMCP, complemented by standard MCP servers for GitHub, Web Fetch, Time synchronization, and Persistent Graph Memory."
+
+do:
+  - "Configure global stdio MCP servers in `state/settings.json` and persist them across runtime container lifecycles."
+  - "Maintain authenticated GitHub operations via `@modelcontextprotocol/server-github` using the user's PAT (`GITHUB_PERSONAL_ACCESS_TOKEN`)."
+  - "Use `mcp-server-fetch` for zero-install, clean markdown extraction of web documentation without spawning external curl or browser processes."
+  - "Use `mcp-server-time` for ISO-8601 standardized timestamping and timezone offsets."
+  - "Use `@modelcontextprotocol/server-memory` for cross-session knowledge graph persistence and entity relation management."
+  - "Serve Antigravity native tools (`write_artifact`, `ask_question`, `manage_task`, `diagnose_error`, `schedule_task`) through `workspace/bin/antigravity_mcp.py` using FastMCP."
+  - "Declare repository-level microagent instructions in `workspace/.openhands/microagents/mcp_tools.md` to guarantee every conversation prioritizes MCP tools over terminal workarounds."
+  - "Expose MCP configuration and operational health through `/gateway/api/mcp` and display live status in `/gateway/status`."
+
+dont:
+  - "Do not use brittle `curl | jq` bash scripts when an authenticated MCP server (e.g. GitHub, Fetch) provides structured schemas."
+  - "Do not store plaintext personal access tokens in git commits; read from environment variables or settings secrets store."
+  - "Do not duplicate tool schemas across disparate servers; keep Antigravity tools consolidated in `antigravity_mcp.py`."
+
+reason:
+  "Raw bash execution for complex operations like GitHub API calls, web page parsing, or knowledge retrieval often produces parsing errors, rate-limit drops, and repetitive agent loops. Standardizing on the Model Context Protocol provides structured JSON schemas, type validation, and consistent execution across any supported LLM."
+
+related_items:
+  - ARCH-ERROR-001
+  - ARCH-TASK-001
+  - ARCH-ARTIFACT-001
+  - DEV-TOOL-001

@@ -1,11 +1,14 @@
 # OpenHands Master Knowledge Graph & Index
 system_name: OpenHands
 repository_root: "/home/ubuntu/openhand"
-knowledge_units_count: 16
-last_updated: "2026-11-13"
+knowledge_units_count: 17
+last_updated: "2026-11-19"
 
 knowledge_units:
   architecture:
+    - id: ARCH-MCP-001
+      file: "knowledge/architecture/ARCH-MCP-001.yaml"
+      title: "Model Context Protocol (MCP) Standardized Multi-Server Integration & Antigravity FastMCP Bridge"
     - id: ARCH-ARTIFACT-001
       file: "knowledge/architecture/ARCH-ARTIFACT-001.yaml"
       title: "Antigravity Interactive Artifacts Canvas, Review Feedback & Decision Cards Architecture"
